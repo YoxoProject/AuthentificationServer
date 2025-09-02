@@ -7,16 +7,21 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import fr.romaindu35.authserver.repository.OAuth2ClientRepository;
+import fr.romaindu35.authserver.repository.UserRepository;
 import fr.romaindu35.authserver.service.JpaRegisteredClientRepository;
+import fr.romaindu35.authserver.utils.Permissions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.io.IOException;
@@ -24,6 +29,10 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Configuration
 public class AuthorizationServerConfig {
@@ -58,5 +67,31 @@ public class AuthorizationServerConfig {
         }
         RSAKey rsaKey = RSAKey.load(keyStore, keyAlias, keyPassword.toCharArray());
         return new ImmutableJWKSet<>(new JWKSet(rsaKey));
+    }
+
+    @Bean
+    public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer(UserRepository userRepository) {
+        return context -> {
+            Authentication principal = context.getPrincipal();
+            String username = principal.getName();
+
+            // On recupère l'ensemble des permissions que possède l'utilisateur
+            Set<Permissions> userPermissions = new HashSet<>();
+            userRepository.findByUsername(username).ifPresent((user) -> {;
+                userPermissions.addAll(user.getAdditionalPermissions());
+                userPermissions.addAll(Arrays.stream(Permissions.getAlwaysGrantedPermissions()).toList());
+            });
+
+            Set<String> userScopes = userPermissions.stream()
+                    .map(Permissions::getScopeName)
+                    .collect(Collectors.toSet());
+            Set<String> requestedScopes = context.getAuthorizedScopes();
+
+            // Ne garder que les scopes que l'utilisateur possède réellement
+            Set<String> filteredScopes = requestedScopes.stream()
+                    .filter(userScopes::contains)
+                    .collect(Collectors.toSet());
+            context.getClaims().claim("scope", filteredScopes);
+        };
     }
 }
