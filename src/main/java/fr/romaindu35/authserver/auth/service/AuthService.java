@@ -16,6 +16,7 @@ import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.view.RedirectView;
 
@@ -41,12 +42,12 @@ public class AuthService {
                 authProperties.getNgClientSecret()
         );
         RestTemplate restTemplate = new RestTemplate();
-        TokenResponse tokenResponse = restTemplate.getForObject(checkTokenUrl, TokenResponse.class); // TODO: savoir quoi faire si le token est vérolé
-        System.out.println(tokenResponse);
-        if (tokenResponse == null) {
+        TokenResponse tokenResponse;
+        try {
+            tokenResponse = restTemplate.getForObject(checkTokenUrl, TokenResponse.class);
+        } catch (HttpClientErrorException.Unauthorized e) {
             return new RedirectView(loginController.getRedirectURLToNationsGloryOAuth());
         }
-
         Optional<User> userOpt = userRepository.findByUsername(tokenResponse.getUsername());
 
         Set<Permissions> userPermissions = new HashSet<>(Set.of(Permissions.getAlwaysGrantedPermissions()));
