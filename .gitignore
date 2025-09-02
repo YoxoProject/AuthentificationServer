@@ -40,3 +40,5 @@ node_modules/
 src/main/frontend/generated/
 target/
 .env
+vite.generated.ts
+keystore.jks
