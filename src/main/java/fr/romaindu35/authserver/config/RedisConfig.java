@@ -31,6 +31,8 @@ public class RedisConfig {
     private String redisPassword;
     @Value("${spring.data.redis.username}")
     private String redisUsername;
+    @Value("${spring.data.redis.ssl.enabled}")
+    private boolean redisSslEnabled;
 
     @Bean
     @Order(1)
@@ -40,11 +42,10 @@ public class RedisConfig {
         redisStandaloneConfiguration.setUsername(redisUsername);
 
 
-        JedisClientConfiguration jedisClientConfiguration = JedisClientConfiguration.builder()
-                .useSsl() // Active SSL/TLS
-                .build();
+        JedisClientConfiguration.JedisClientConfigurationBuilder jedisClientConfigurationBuilder = JedisClientConfiguration.builder();
+        if (redisSslEnabled) jedisClientConfigurationBuilder.useSsl();
 
-        return new JedisConnectionFactory(redisStandaloneConfiguration, jedisClientConfiguration);
+        return new JedisConnectionFactory(redisStandaloneConfiguration, jedisClientConfigurationBuilder.build());
     }
 
     @Bean
