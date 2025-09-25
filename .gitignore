@@ -42,3 +42,6 @@ target/
 .env
 vite.generated.ts
 keystore.jks
+src/main/bundles/
+CLAUDE.md
+.claude
