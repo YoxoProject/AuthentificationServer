@@ -39,6 +39,9 @@ public class OAuth2Client {
     @Column(nullable = false)
     private UUID ownerId;
 
+    @Column(nullable = false)
+    private Set<String> corsUrl;
+
     public enum ClientType {
         CLIENT, // Pour les applications dont l'utilisateur s'authentifie coté client
         SERVER, // Pour les applications dont l'utilisateur s'authentifie coté server
