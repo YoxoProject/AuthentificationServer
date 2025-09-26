@@ -12,6 +12,18 @@ const customConfig: UserConfigFn = (env) => ({
             "@": path.resolve(__dirname, "./src/main/frontend"),
         },
     },
+    logLevel: env.mode === 'production' ? 'info' : 'info',
+    css: {
+        postcss: {}
+    },
+    build: {
+        reportCompressedSize: false,
+        rollupOptions: {
+            output: {
+                manualChunks: undefined,
+            }
+        }
+    },
 });
 
 export default overrideVaadinConfig(customConfig);
