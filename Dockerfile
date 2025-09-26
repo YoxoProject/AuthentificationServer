@@ -12,9 +12,25 @@ COPY gradle.properties* ./
 RUN gradle dependencies --no-daemon
 
 COPY src/ ./src/
-COPY package.json pnpm-lock.yaml* vite.config.ts tailwind.config.js* components.json tsconfig.json ./
+COPY package.json pnpm-lock.yaml* vite.config.ts components.json tsconfig.json ./
 
-RUN gradle clean build -Pproduction -DskipTests -Pvaadin.productionMode=true --no-daemon
+# Enable verbose logging for Tailwind CSS and Vite
+ENV DEBUG=tailwindcss:*
+ENV VITE_DEBUG=1
+ENV NODE_ENV=production
+
+# Install pnpm dependencies to ensure Tailwind CSS is available
+RUN pnpm install
+
+# Show debug information
+RUN echo "=== Package.json Tailwind dependencies ===" && \
+    grep -A 3 -B 3 tailwind package.json && \
+    echo "=== Vite config ===" && \
+    cat vite.config.ts && \
+    echo "=== Frontend CSS files ===" && \
+    find src/main/frontend -name "*.css" -type f
+
+RUN gradle clean build -Pproduction -DskipTests -Pvaadin.productionMode=true --no-daemon --info
 #RUN --mount=type=cache,target=/root/.gradle gradle clean build -Pproduction -DskipTests -Pvaadin.productionMode=true
 
 FROM eclipse-temurin:21-jre-alpine
