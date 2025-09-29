@@ -37,11 +37,11 @@
     "tailwindcss": "^4.1.12"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.12",
     "@babel/preset-react": "7.27.1",
     "@preact/signals-react-transform": "0.5.1",
     "@rollup/plugin-replace": "6.0.2",
     "@rollup/pluginutils": "5.1.4",
+    "@tailwindcss/vite": "4.1.12",
     "@types/node": "^24.3.0",
     "@types/react": "18.3.23",
     "@types/react-dom": "18.3.7",
@@ -132,7 +132,7 @@
       "workbox-core": "7.3.0",
       "workbox-precaching": "7.3.0"
     },
-    "hash": "c09395f0a121f4353e4376b5d539ca76520c091f75972abd2556cb91351ae5aa"
+    "hash": "5dc1bc862e168c2461be2c1e3587ce26b5af30727fa558f2ff6735b91e74b844"
   },
   "pnpm": {
     "overrides": {
@@ -144,7 +144,6 @@
       "@polymer/polymer": "$@polymer/polymer",
       "@radix-ui/react-checkbox": "$@radix-ui/react-checkbox",
       "@radix-ui/react-slot": "$@radix-ui/react-slot",
-      "@tailwindcss/vite": "$@tailwindcss/vite",
       "@vaadin/common-frontend": "$@vaadin/common-frontend",
       "@vaadin/hilla-file-router": "$@vaadin/hilla-file-router",
       "@vaadin/hilla-frontend": "$@vaadin/hilla-frontend",

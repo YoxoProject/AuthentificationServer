@@ -26,7 +26,7 @@ public class DefaultSecurityConfig extends VaadinWebSecurity {
         http.authorizeHttpRequests(authorize -> {
                     authorize.requestMatchers(HttpMethod.GET, "/auth/callback/nationsglory").permitAll();
                     authorize.requestMatchers(HttpMethod.GET, "/images/**").permitAll(); // Autorise l'accès aux images
-                    authorize.requestMatchers(HttpMethod.GET, "/").authenticated();
+                    authorize.requestMatchers(HttpMethod.GET, "/").permitAll();
                     authorize.requestMatchers(HttpMethod.GET,
                             "/android-chrome-192x192.png",
                             "/android-chrome-512x512.png",
