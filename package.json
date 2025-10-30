@@ -5,7 +5,13 @@
   "dependencies": {
     "@polymer/polymer": "3.5.2",
     "@radix-ui/react-checkbox": "^1.3.3",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@radix-ui/react-tabs": "^1.1.13",
     "@vaadin/bundles": "24.8.5",
     "@vaadin/common-frontend": "0.0.19",
     "@vaadin/hilla-file-router": "24.8.6",
@@ -33,6 +39,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-router": "7.6.1",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.12"
   },
@@ -132,7 +139,7 @@
       "workbox-core": "7.3.0",
       "workbox-precaching": "7.3.0"
     },
-    "hash": "5dc1bc862e168c2461be2c1e3587ce26b5af30727fa558f2ff6735b91e74b844"
+    "hash": "ec2437682feedadbca83527428a7212b45f938ef404394348864727bedbce40f"
   },
   "pnpm": {
     "overrides": {
@@ -226,7 +233,14 @@
       "@vaadin/upload": "24.8.5",
       "@vaadin/router": "2.0.0",
       "@vaadin/vertical-layout": "24.8.5",
-      "@vaadin/virtual-list": "24.8.5"
+      "@vaadin/virtual-list": "24.8.5",
+      "@radix-ui/react-dialog": "$@radix-ui/react-dialog",
+      "@radix-ui/react-label": "$@radix-ui/react-label",
+      "@radix-ui/react-select": "$@radix-ui/react-select",
+      "@radix-ui/react-separator": "$@radix-ui/react-separator",
+      "@radix-ui/react-switch": "$@radix-ui/react-switch",
+      "@radix-ui/react-tabs": "$@radix-ui/react-tabs",
+      "sonner": "$sonner"
     }
   }
 }

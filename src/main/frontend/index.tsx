@@ -15,11 +15,13 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 import { router } from 'Frontend/generated/routes.js';
 import {ThemeProvider} from "@/components/theme/ThemeProvider";
+import {Toaster} from "@/components/ui/sonner";
 
 function App() {
     return (
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <RouterProvider router={router} />
+            <Toaster />
         </ThemeProvider>
     );
 }
