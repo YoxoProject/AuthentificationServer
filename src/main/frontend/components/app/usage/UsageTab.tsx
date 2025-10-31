@@ -6,8 +6,8 @@ import {ScopeSelector} from './ScopeSelector';
 import {RedirectUriSelector} from './RedirectUriSelector';
 import {CodeBlock} from './CodeBlock';
 import {OAuthFlowDiagram} from './OAuthFlowDiagram';
+import {PKCEGenerator} from './PKCEGenerator';
 import {useOAuthExamples} from '@/hooks/useOAuthExamples';
-import ReactMarkdown from 'react-markdown';
 
 interface UsageTabProps {
     clientId: string;
@@ -33,6 +33,7 @@ export function UsageTab({clientId, clientType, redirectUris, hasClientSecret}: 
     const [selectedRedirectUri, setSelectedRedirectUri] = useState<string | undefined>(
         redirectUris.length > 0 ? redirectUris[0] : undefined
     );
+    const [pkceValues, setPkceValues] = useState<{verifier: string, challenge: string} | null>(null);
 
     // Update selected redirect URI when redirectUris change
     useEffect(() => {
@@ -52,6 +53,7 @@ export function UsageTab({clientId, clientType, redirectUris, hasClientSecret}: 
         redirectUri: selectedRedirectUri,
         scopes: selectedScopes,
         hasClientSecret,
+        pkceValues,
     });
 
     return (
@@ -218,6 +220,7 @@ export function UsageTab({clientId, clientType, redirectUris, hasClientSecret}: 
                                         localement pour être envoyé lors de l'échange du code contre le token.
                                     </p>
                                 </div>
+                                <PKCEGenerator onGenerate={(verifier, challenge) => setPkceValues({verifier, challenge})} />
                             </div>
 
                             {/* CLIENT Step 2: Authorization */}
@@ -231,9 +234,7 @@ export function UsageTab({clientId, clientType, redirectUris, hasClientSecret}: 
                                     L'utilisateur sera authentifié et devra donner son consentement.
                                 </p>
                                 <div className="space-y-4">
-                                    <div className="prose dark:prose-invert max-w-none">
-                                        <ReactMarkdown>{examples.authorizationRequestDescription}</ReactMarkdown>
-                                    </div>
+                                    {examples.authorizationRequestDescription}
                                     <div>
                                         <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">URL
                                             complète générée :</p>
@@ -273,9 +274,7 @@ export function UsageTab({clientId, clientType, redirectUris, hasClientSecret}: 
                                     à l'étape 1.
                                 </p>
                                 <div className="space-y-4">
-                                    <div className="prose dark:prose-invert max-w-none">
-                                        <ReactMarkdown>{examples.tokenRequestDescription}</ReactMarkdown>
-                                    </div>
+                                    {examples.tokenRequestDescription}
                                     <CodeBlock code={examples.tokenRequestBody} language="text" title="Body"/>
                                     <CodeBlock code={examples.curlTokenRequest} language="bash"
                                                title="Exemple avec cURL"/>
@@ -345,9 +344,7 @@ export function UsageTab({clientId, clientType, redirectUris, hasClientSecret}: 
                                     pour la sécurité.
                                 </p>
                                 <div className="space-y-4">
-                                    <div className="prose dark:prose-invert max-w-none">
-                                        <ReactMarkdown>{examples.authorizationRequestDescription}</ReactMarkdown>
-                                    </div>
+                                    {examples.authorizationRequestDescription}
                                     <div>
                                         <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">URL
                                             complète générée :</p>
@@ -385,9 +382,7 @@ export function UsageTab({clientId, clientType, redirectUris, hasClientSecret}: 
                                     Cette requête doit être faite depuis votre backend (jamais depuis le navigateur).
                                 </p>
                                 <div className="space-y-4">
-                                    <div className="prose dark:prose-invert max-w-none">
-                                        <ReactMarkdown>{examples.tokenRequestDescription}</ReactMarkdown>
-                                    </div>
+                                    {examples.tokenRequestDescription}
                                     <CodeBlock code={examples.tokenRequestBody} language="text" title="Body"/>
                                     <CodeBlock code={examples.curlTokenRequest} language="bash"
                                                title="Exemple avec cURL"/>
@@ -407,9 +402,7 @@ export function UsageTab({clientId, clientType, redirectUris, hasClientSecret}: 
                                         obtenir un nouveau access token sans redemander l'authentification.
                                     </p>
                                     <div className="space-y-4">
-                                        <div className="prose dark:prose-invert max-w-none">
-                                            <ReactMarkdown>{examples.refreshTokenDescription}</ReactMarkdown>
-                                        </div>
+                                        {examples.refreshTokenDescription}
                                         {examples.curlRefreshToken && (
                                             <CodeBlock code={examples.curlRefreshToken} language="bash"
                                                        title="Exemple avec cURL"/>
@@ -448,9 +441,7 @@ export function UsageTab({clientId, clientType, redirectUris, hasClientSecret}: 
                                     Aucune interaction utilisateur n'est nécessaire.
                                 </p>
                                 <div className="space-y-4">
-                                    <div className="prose dark:prose-invert max-w-none">
-                                        <ReactMarkdown>{examples.tokenRequestDescription}</ReactMarkdown>
-                                    </div>
+                                    {examples.tokenRequestDescription}
                                     <CodeBlock code={examples.tokenRequestBody} language="text" title="Body"/>
                                     <CodeBlock code={examples.curlTokenRequest} language="bash"
                                                title="Exemple avec cURL"/>
