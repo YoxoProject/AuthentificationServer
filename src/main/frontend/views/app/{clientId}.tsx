@@ -21,6 +21,7 @@ import {Badge} from "@/components/ui/badge";
 import {Label} from "@/components/ui/label";
 import {useConfirm} from "@/contexts/ConfirmDialogContext";
 import {ChangeClientTypeDialog} from "@/components/app/ChangeClientTypeDialog";
+import {UsageTab} from "@/components/app/usage/UsageTab";
 
 // Schéma de validation Zod
 const clientConfigSchema = z.object({
@@ -348,7 +349,7 @@ export default function ClientDetailsPage() {
 
                 {/* Tabs */}
                 <Tabs defaultValue="configuration" className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="configuration">Configuration</TabsTrigger>
                         <TabsTrigger
                             value="credentials"
@@ -356,6 +357,13 @@ export default function ClientDetailsPage() {
                             title={form.formState.isDirty ? "Enregistrez vos modifications avant de changer d'onglet" : ""}
                         >
                             Credentials
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="usage"
+                            disabled={form.formState.isDirty}
+                            title={form.formState.isDirty ? "Enregistrez vos modifications avant de changer d'onglet" : ""}
+                        >
+                            Utilisation
                         </TabsTrigger>
                     </TabsList>
 
@@ -582,6 +590,16 @@ export default function ClientDetailsPage() {
                                 </ul>
                             </div>
                         </div>
+                    </TabsContent>
+
+                    {/* Onglet Utilisation */}
+                    <TabsContent value="usage" className="space-y-6">
+                        <UsageTab
+                            clientId={client.credentials.clientId}
+                            clientType={currentClientType}
+                            redirectUris={form.getValues("redirectUris")}
+                            hasClientSecret={!!client.credentials.clientSecret}
+                        />
                     </TabsContent>
                 </Tabs>
             </div>

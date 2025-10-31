@@ -7,11 +7,14 @@ import fr.romaindu35.authserver.dto.ClientListItemDTO;
 import fr.romaindu35.authserver.entity.User;
 import fr.romaindu35.authserver.repository.UserRepository;
 import fr.romaindu35.authserver.service.ClientManagementService;
+import fr.romaindu35.authserver.utils.Permissions;
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.security.PermitAll;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -106,6 +109,19 @@ public class ClientManagementController {
     public void deleteClient(String clientId) {
         User currentUser = getCurrentUser();
         clientManagementService.deleteClient(clientId, currentUser.getId());
+    }
+
+    /**
+     * Récupère la liste des scopes disponibles pour les clients OAuth2.
+     * Retourne tous les scopes sauf API_ACCESS (réservé aux clients de type SERVICE).
+     *
+     * @return Tableau des scopes disponibles avec leur nom et description
+     */
+    @Nonnull
+    public Permissions.PermissionData[] getAvailableScopes() {
+        return Arrays.stream(Permissions.valuesData())
+                .filter(p -> !p.scopeName().equals("api_access"))
+                .toArray(Permissions.PermissionData[]::new);
     }
 
     /**
