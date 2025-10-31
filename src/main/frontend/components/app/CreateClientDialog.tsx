@@ -1,4 +1,6 @@
-import {useState} from "react";
+import {useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
+import * as z from "zod";
 import {
     Dialog,
     DialogContent,
@@ -7,9 +9,20 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import {Input} from "@/components/ui/input";
-import {Label} from "@/components/ui/label";
 import {Button} from "@/components/ui/button";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
+import {Input} from "@/components/ui/input";
+
+const formSchema = z.object({
+    clientName: z.string().min(1, "Le nom de l'application est requis"),
+});
 
 interface CreateClientDialogProps {
     open: boolean;
@@ -26,63 +39,70 @@ export function CreateClientDialog({
                                        onOpenChange,
                                        onSubmit,
                                    }: CreateClientDialogProps) {
-    const [clientName, setClientName] = useState("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            clientName: "",
+        },
+    });
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!clientName.trim()) return;
-
-        setIsSubmitting(true);
+    const handleSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
-            await onSubmit(clientName);
-            setClientName(""); // Reset form
+            await onSubmit(values.clientName);
+            form.reset();
             onOpenChange(false);
         } catch (error) {
             console.error("Erreur lors de la création du client:", error);
-        } finally {
-            setIsSubmitting(false);
         }
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
-                <form onSubmit={handleSubmit}>
-                    <DialogHeader>
-                        <DialogTitle>Créer une nouvelle application</DialogTitle>
-                        <DialogDescription>
-                            Donnez un nom à votre application OAuth2. Vous pourrez configurer
-                            les autres paramètres après la création.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <Label htmlFor="clientName">Nom de l'application</Label>
-                        <Input
-                            id="clientName"
-                            placeholder="Mon application"
-                            value={clientName}
-                            onChange={(e) => setClientName(e.target.value)}
-                            autoFocus
-                            required
-                            disabled={isSubmitting}
-                            className="mt-2"
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => onOpenChange(false)}
-                            disabled={isSubmitting}
-                        >
-                            Annuler
-                        </Button>
-                        <Button type="submit" disabled={isSubmitting || !clientName.trim()}>
-                            {isSubmitting ? "Création..." : "Créer"}
-                        </Button>
-                    </DialogFooter>
-                </form>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleSubmit)}>
+                        <DialogHeader>
+                            <DialogTitle>Créer une nouvelle application</DialogTitle>
+                            <DialogDescription>
+                                Donnez un nom à votre application OAuth2. Vous pourrez configurer
+                                les autres paramètres après la création.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <FormField
+                                control={form.control}
+                                name="clientName"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Nom de l'application</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="Mon application"
+                                                {...field}
+                                                autoFocus
+                                                disabled={form.formState.isSubmitting}
+                                            />
+                                        </FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => onOpenChange(false)}
+                                disabled={form.formState.isSubmitting}
+                            >
+                                Annuler
+                            </Button>
+                            <Button type="submit" disabled={form.formState.isSubmitting}>
+                                {form.formState.isSubmitting ? "Création..." : "Créer"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
             </DialogContent>
         </Dialog>
     );

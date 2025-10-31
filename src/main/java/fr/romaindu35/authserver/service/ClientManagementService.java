@@ -13,11 +13,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -153,6 +156,16 @@ public class ClientManagementService {
             throw new SecurityException("Vous n'êtes pas autorisé à modifier ce client");
         }
 
+        // Validation des URLs de redirection
+        Set<String> validatedRedirectUris = configuration.redirectUris().stream()
+                .map(this::validateAndNormalizeUrl)
+                .collect(Collectors.toSet());
+
+        // Validation des URLs CORS
+        Set<String> validatedCorsUrls = configuration.corsUrls().stream()
+                .map(this::validateAndNormalizeUrl)
+                .collect(Collectors.toSet());
+
         // Validation : si on passe de SERVER/SERVICE vers CLIENT, supprimer le secret
         OAuth2Client.ClientType oldType = client.getClientType();
         OAuth2Client.ClientType newType = configuration.clientType();
@@ -171,9 +184,9 @@ public class ClientManagementService {
 
         client.setClientName(configuration.clientName());
         client.setClientType(configuration.clientType());
-        client.setRedirectUris(configuration.redirectUris());
-        client.setCorsUrl(configuration.corsUrls());
-        client.setOfficial(configuration.official());
+        client.setRedirectUris(validatedRedirectUris);
+        client.setCorsUrl(validatedCorsUrls);
+        //client.setOfficial(configuration.official()); // L'attribut 'official' ne peut pas être modifié par l'utilisateur
 
         oauth2ClientRepository.save(client);
     }
@@ -284,6 +297,61 @@ public class ClientManagementService {
         byte[] bytes = new byte[24];
         secureRandom.nextBytes(bytes);
         return "yxs_" + bytesToHex(bytes);
+    }
+
+    /**
+     * Valide et normalise une URL selon les règles de sécurité :
+     * - Doit commencer par http:// ou https://
+     * - Remplace 127.0.0.1 par localhost
+     * - Supprime le / final
+     * - Rejette les wildcards (*)
+     * Utilise java.net.URI pour une validation robuste de la structure complète.
+     *
+     * @param url URL à valider et normaliser
+     * @return URL normalisée
+     * @throws IllegalArgumentException si l'URL est invalide
+     */
+    private String validateAndNormalizeUrl(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            throw new IllegalArgumentException("L'URL ne peut pas être vide");
+        }
+
+        String trimmed = url.trim();
+
+        // Rejeter les wildcards
+        if (trimmed.contains("*")) {
+            throw new IllegalArgumentException("Les wildcards (*) ne sont pas autorisés dans les URLs");
+        }
+
+        try {
+            URI uri = new URI(trimmed);
+
+            // Vérifier que l'URI est absolue (a un scheme)
+            if (!uri.isAbsolute()) {
+                throw new IllegalArgumentException("L'URL doit être absolue (contenir http:// ou https://)");
+            }
+
+            // Vérifier le scheme
+            String scheme = uri.getScheme();
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+                throw new IllegalArgumentException("L'URL doit commencer par http:// ou https://");
+            }
+
+            // Vérifier qu'il y a un host
+            if (uri.getHost() == null || uri.getHost().isEmpty()) {
+                throw new IllegalArgumentException("L'URL doit contenir un nom d'hôte valide");
+            }
+
+            String normalized = trimmed;
+            // Supprimer le / final si le path est vide ou juste "/"
+            if (normalized.endsWith("/") && (uri.getPath() == null || uri.getPath().equals("/"))) {
+                normalized = normalized.substring(0, normalized.length() - 1);
+            }
+
+            return normalized;
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Format d'URL invalide: " + e.getMessage());
+        }
     }
 
     /**

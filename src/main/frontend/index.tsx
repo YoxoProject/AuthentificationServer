@@ -16,13 +16,31 @@ import { RouterProvider } from 'react-router';
 import { router } from 'Frontend/generated/routes.js';
 import {ThemeProvider} from "@/components/theme/ThemeProvider";
 import {Toaster} from "@/components/ui/sonner";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ConfirmDialogProvider } from '@/contexts/ConfirmDialogContext';
+
+// Configuration du QueryClient
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            staleTime: 1000 * 60 * 5, // Les données sont considérées fraîches pendant 5 minutes
+            gcTime: 1000 * 60 * 30, // Cache conservé 30 minutes (anciennement cacheTime)
+            retry: 1, // Réessayer une fois en cas d'erreur
+            refetchOnWindowFocus: false, // Ne pas refetch automatiquement au focus de la fenêtre
+        },
+    },
+});
 
 function App() {
     return (
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <RouterProvider router={router} />
-            <Toaster />
-        </ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+            <ConfirmDialogProvider>
+                <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+                    <RouterProvider router={router} />
+                    <Toaster />
+                </ThemeProvider>
+            </ConfirmDialogProvider>
+        </QueryClientProvider>
     );
 }
 

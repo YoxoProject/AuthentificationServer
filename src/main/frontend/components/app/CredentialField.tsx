@@ -4,6 +4,7 @@ import {Label} from "@/components/ui/label";
 import {Button} from "@/components/ui/button";
 import {Copy, Eye, EyeOff, RefreshCw} from "lucide-react";
 import {toast} from "sonner";
+import {useConfirm} from "@/contexts/ConfirmDialogContext";
 
 interface CredentialFieldProps {
     label: string;
@@ -29,13 +30,18 @@ export function CredentialField({
                                     description,
                                     isEmpty = false,
                                 }: CredentialFieldProps) {
+    const confirm = useConfirm();
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [showSecret, setShowSecret] = useState(false);
-    const [displayValue, setDisplayValue] = useState(value);
+    // Nouvelle valeur régénérée (affichée temporairement, puis synchronisée via props)
+    const [regeneratedValue, setRegeneratedValue] = useState<string | null>(null);
+
+    // Utiliser regeneratedValue si disponible, sinon value
+    const currentValue = regeneratedValue || value;
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(displayValue);
+            await navigator.clipboard.writeText(currentValue);
             toast.success("Copié dans le presse-papier");
         } catch (error) {
             toast.error("Erreur lors de la copie");
@@ -45,18 +51,24 @@ export function CredentialField({
     const handleRegenerate = async () => {
         if (!onRegenerate) return;
 
-        const confirmed = confirm(
-            `Êtes-vous sûr de vouloir régénérer ce ${
-                isSecret ? "secret" : "client ID"
-            } ?\n\nCette action est irréversible et invalidera toutes les configurations existantes.`
-        );
+        const credentialType = isSecret ? "secret" : "client ID";
+        const confirmed = await confirm({
+            title: `Régénérer ${label}`,
+            description: `Êtes-vous sûr de vouloir régénérer ce ${credentialType} ? Cette action est irréversible et invalidera toutes les configurations existantes.`,
+            confirmText: "REGENERER",
+            confirmLabel: "Régénérer",
+            cancelLabel: "Annuler",
+            variant: "destructive"
+        });
 
         if (!confirmed) return;
 
         setIsRegenerating(true);
         try {
             const newValue = await onRegenerate();
-            setDisplayValue(newValue);
+            // Stocker temporairement la nouvelle valeur
+            // (elle sera ensuite mise à jour via les props par le parent)
+            setRegeneratedValue(newValue);
             toast.success(
                 `${isSecret ? "Secret" : "Client ID"} régénéré avec succès`
             );
@@ -72,7 +84,7 @@ export function CredentialField({
         if (isSecret && !showSecret) {
             return "•".repeat(40);
         }
-        return displayValue;
+        return currentValue;
     };
 
     return (

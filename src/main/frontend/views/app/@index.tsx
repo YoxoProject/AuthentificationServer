@@ -1,5 +1,6 @@
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import {useNavigate} from "react-router";
+import {useQuery, useMutation, useQueryClient} from "@tanstack/react-query";
 import {ClientManagementController} from "Frontend/generated/endpoints";
 import {ClientCard} from "@/components/app/ClientCard";
 import {CreateClientDialog} from "@/components/app/CreateClientDialog";
@@ -22,40 +23,40 @@ export const config = {
  */
 export default function AppPage() {
     const navigate = useNavigate();
-    const [clients, setClients] = useState<ClientListItemDTO[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const queryClient = useQueryClient();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-    // Charger la liste des clients au montage du composant
-    useEffect(() => {
-        loadClients();
-    }, []);
-
-    const loadClients = async () => {
-        setIsLoading(true);
-        try {
-            const fetchedClients =
-                await ClientManagementController.getMyClients();
+    // Query pour charger la liste des clients
+    const {data: clients = [], isLoading} = useQuery({
+        queryKey: ['clients'],
+        queryFn: async () => {
+            const fetchedClients = await ClientManagementController.getMyClients();
             // Filtrer les valeurs undefined du tableau retourné par Hilla
-            setClients((fetchedClients || []).filter((client): client is ClientListItemDTO => client !== undefined));
-        } catch (error) {
-            console.error("Erreur lors du chargement des clients:", error);
-            toast.error("Impossible de charger la liste des clients");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+            return (fetchedClients || []).filter((client): client is ClientListItemDTO => client !== undefined);
+        },
+    });
+
+    // Mutation pour créer un nouveau client
+    const createClientMutation = useMutation({
+        mutationFn: (clientName: string) => ClientManagementController.createClient(clientName),
+        onSuccess: (newClientId) => {
+            toast.success("Application créée avec succès");
+            // Invalider le cache pour recharger la liste
+            queryClient.invalidateQueries({queryKey: ['clients']});
+            // Rediriger vers la page de configuration du nouveau client
+            navigate(`/app/${newClientId}`);
+        },
+        onError: (error) => {
+            console.error("Erreur lors de la création du client:", error);
+            toast.error("Erreur lors de la création de l'application");
+        },
+    });
 
     const handleCreateClient = async (clientName: string) => {
         try {
-            const newClientId =
-                await ClientManagementController.createClient(clientName);
-            toast.success("Application créée avec succès");
-            // Rediriger vers la page de configuration du nouveau client
-            navigate(`/app/${newClientId}`);
+            await createClientMutation.mutateAsync(clientName);
         } catch (error) {
-            console.error("Erreur lors de la création du client:", error);
-            toast.error("Erreur lors de la création de l'application");
+            // L'erreur est déjà gérée par onError
             throw error; // Re-throw pour que le dialog puisse gérer l'erreur
         }
     };
