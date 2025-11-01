@@ -139,6 +139,10 @@ public class ClientManagementService {
 
     /**
      * Met à jour la configuration d'un client OAuth2.
+     * Applique automatiquement les règles métier selon le type de client :
+     * - CLIENT : pas de secret, redirect URIs requis, CORS requis
+     * - SERVER : secret requis, redirect URIs requis, pas de CORS
+     * - SERVICE : secret requis, pas de redirect URIs, pas de CORS
      *
      * @param clientId      Identifiant unique du client
      * @param configuration Nouvelle configuration
@@ -156,36 +160,54 @@ public class ClientManagementService {
             throw new SecurityException("Vous n'êtes pas autorisé à modifier ce client");
         }
 
-        // Validation des URLs de redirection
-        Set<String> validatedRedirectUris = configuration.redirectUris().stream()
-                .map(this::validateAndNormalizeUrl)
-                .collect(Collectors.toSet());
-
-        // Validation des URLs CORS
-        Set<String> validatedCorsUrls = configuration.corsUrls().stream()
-                .map(this::validateAndNormalizeUrl)
-                .collect(Collectors.toSet());
-
-        // Validation : si on passe de SERVER/SERVICE vers CLIENT, supprimer le secret
         OAuth2Client.ClientType oldType = client.getClientType();
         OAuth2Client.ClientType newType = configuration.clientType();
 
-        if (oldType != OAuth2Client.ClientType.CLIENT && newType == OAuth2Client.ClientType.CLIENT) {
+        // === GESTION DU CLIENT SECRET ===
+        // Règle : CLIENT n'a jamais de secret, SERVER et SERVICE ont toujours un secret
+        if (newType == OAuth2Client.ClientType.CLIENT) {
+            // CLIENT : supprimer le secret s'il existe
             client.setClientSecret(null);
             client.setClientSecretExpiresAt(null);
-        }
-
-        // Validation : si on passe de CLIENT vers SERVER/SERVICE, générer un secret
-        if (oldType == OAuth2Client.ClientType.CLIENT && newType != OAuth2Client.ClientType.CLIENT) {
+        } else if (oldType == OAuth2Client.ClientType.CLIENT) {
+            // CLIENT → SERVER/SERVICE : générer un nouveau secret
             String plainSecret = generateClientSecret();
             client.setClientSecret(passwordEncoder.encode(plainSecret));
             // Note: Le secret en clair est perdu après ce point, l'utilisateur devra le régénérer s'il le perd
         }
+        // Sinon (SERVER ↔ SERVICE) : conserver le secret existant
 
+        // === GESTION DES REDIRECT URIs ===
+        // Règle : CLIENT et SERVER ont des redirect URIs, SERVICE n'en a pas
+        Set<String> finalRedirectUris;
+        if (newType == OAuth2Client.ClientType.SERVICE) {
+            // SERVICE : pas de redirect URIs (flow M2M sans interaction utilisateur)
+            finalRedirectUris = new HashSet<>();
+        } else {
+            // CLIENT ou SERVER : valider et conserver les redirect URIs
+            finalRedirectUris = configuration.redirectUris().stream()
+                    .map(this::validateAndNormalizeUrl)
+                    .collect(Collectors.toSet());
+        }
+
+        // === GESTION DES CORS URLs ===
+        // Règle : seul CLIENT a des CORS (SPA/Mobile), SERVER et SERVICE n'en ont pas
+        Set<String> finalCorsUrls;
+        if (newType == OAuth2Client.ClientType.CLIENT) {
+            // CLIENT : valider et conserver les CORS URLs
+            finalCorsUrls = configuration.corsUrls().stream()
+                    .map(this::validateAndNormalizeUrl)
+                    .collect(Collectors.toSet());
+        } else {
+            // SERVER ou SERVICE : pas de CORS (backend-to-backend)
+            finalCorsUrls = new HashSet<>();
+        }
+
+        // Appliquer les changements
         client.setClientName(configuration.clientName());
-        client.setClientType(configuration.clientType());
-        client.setRedirectUris(validatedRedirectUris);
-        client.setCorsUrl(validatedCorsUrls);
+        client.setClientType(newType);
+        client.setRedirectUris(finalRedirectUris);
+        client.setCorsUrl(finalCorsUrls);
         //client.setOfficial(configuration.official()); // L'attribut 'official' ne peut pas être modifié par l'utilisateur
 
         oauth2ClientRepository.save(client);

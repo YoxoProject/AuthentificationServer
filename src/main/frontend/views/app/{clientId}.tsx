@@ -438,29 +438,35 @@ export default function ClientDetailsPage() {
 
                                     <Separator/>
 
-                                    <div>
-                                        <h2 className="text-xl font-semibold mb-4">
-                                            URIs de redirection
-                                        </h2>
-                                        <FormField
-                                            control={form.control}
-                                            name="redirectUris"
-                                            render={({field}) => (
-                                                <FormItem>
-                                                    <MultiValueInput
-                                                        label="Redirect URIs"
-                                                        placeholder="https://example.com/callback"
-                                                        values={field.value}
-                                                        onChange={field.onChange}
-                                                        description="URIs autorisées pour la redirection après authentification (authorization code flow)"
-                                                        validateUrl={true}
+                                    {
+                                        (currentClientType == ClientType.CLIENT || currentClientType == ClientType.SERVER) && (
+                                            <>
+                                                <div>
+                                                    <h2 className="text-xl font-semibold mb-4">
+                                                        URIs de redirection
+                                                    </h2>
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="redirectUris"
+                                                        render={({field}) => (
+                                                            <FormItem>
+                                                                <MultiValueInput
+                                                                    label="Redirect URIs"
+                                                                    placeholder="https://example.com/callback"
+                                                                    values={field.value}
+                                                                    onChange={field.onChange}
+                                                                    description="URIs autorisées pour la redirection après authentification (authorization code flow)"
+                                                                    validateUrl={true}
+                                                                />
+                                                            </FormItem>
+                                                        )}
                                                     />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
+                                                </div>
 
-                                    <Separator/>
+                                                <Separator/>
+                                            </>
+                                        )
+                                    }
 
                                     {
                                         currentClientType == ClientType.CLIENT && (

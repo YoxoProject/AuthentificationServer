@@ -89,39 +89,97 @@ export function ChangeClientTypeDialog({
     const getImpactMessage = () => {
         if (!hasChanged) return null;
 
-        if (currentType === ClientType.CLIENT && selectedType !== ClientType.CLIENT) {
+        // CLIENT → SERVER
+        if (currentType === ClientType.CLIENT && selectedType === ClientType.SERVER) {
             return {
                 icon: <AlertTriangle className="h-5 w-5 text-destructive" />,
                 variant: "destructive" as const,
-                title: "Ce changement va :",
+                title: "CLIENT → SERVER : Ce changement va :",
                 items: [
-                    "Générer un nouveau client secret",
+                    "Générer un nouveau client secret (⚠️ à stocker de manière sécurisée)",
+                    "Supprimer toutes les URLs CORS configurées",
                     "Désactiver l'authentification PKCE",
-                    "Nécessiter l'utilisation du secret dans votre backend",
-                    "Désactiver les CORS"
+                    "Les redirect URIs seront conservées"
                 ],
             };
         }
 
-        if (currentType !== ClientType.CLIENT && selectedType === ClientType.CLIENT) {
+        // CLIENT → SERVICE
+        if (currentType === ClientType.CLIENT && selectedType === ClientType.SERVICE) {
             return {
                 icon: <AlertTriangle className="h-5 w-5 text-destructive" />,
                 variant: "destructive" as const,
-                title: "Ce changement va :",
+                title: "CLIENT → SERVICE : Ce changement va :",
+                items: [
+                    "Générer un nouveau client secret (⚠️ à stocker de manière sécurisée)",
+                    "Supprimer toutes les URLs CORS configurées",
+                    "Supprimer toutes les redirect URIs",
+                    "Désactiver l'authentification PKCE",
+                    "Désactiver l'endpoint /oauth2/authorize (flow M2M uniquement)"
+                ],
+            };
+        }
+
+        // SERVER → CLIENT
+        if (currentType === ClientType.SERVER && selectedType === ClientType.CLIENT) {
+            return {
+                icon: <AlertTriangle className="h-5 w-5 text-destructive" />,
+                variant: "destructive" as const,
+                title: "SERVER → CLIENT : Ce changement va :",
                 items: [
                     "Supprimer définitivement le client secret existant",
-                    "Activer l'authentification PKCE uniquement"
+                    "Activer l'authentification PKCE",
+                    "Les redirect URIs seront conservées",
+                    "⚠️ Nécessite la configuration des URLs CORS"
                 ],
             };
         }
 
-        // SERVER ↔ SERVICE
-        return {
-            icon: <Info className="h-5 w-5 text-blue-600" />,
-            variant: "info" as const,
-            title: "Ce changement modifiera uniquement les flows OAuth2 disponibles.",
-            items: ["Le client secret sera conservé"],
-        };
+        // SERVER → SERVICE
+        if (currentType === ClientType.SERVER && selectedType === ClientType.SERVICE) {
+            return {
+                icon: <Info className="h-5 w-5 text-blue-600" />,
+                variant: "info" as const,
+                title: "SERVER → SERVICE : Ce changement va :",
+                items: [
+                    "Conserver le client secret actuel",
+                    "Supprimer toutes les redirect URIs",
+                    "Désactiver l'endpoint /oauth2/authorize (flow M2M uniquement)"
+                ],
+            };
+        }
+
+        // SERVICE → CLIENT
+        if (currentType === ClientType.SERVICE && selectedType === ClientType.CLIENT) {
+            return {
+                icon: <AlertTriangle className="h-5 w-5 text-destructive" />,
+                variant: "destructive" as const,
+                title: "SERVICE → CLIENT : Ce changement va :",
+                items: [
+                    "Supprimer définitivement le client secret existant",
+                    "Activer l'authentification PKCE",
+                    "Activer l'endpoint /oauth2/authorize",
+                    "⚠️ Nécessite la configuration des redirect URIs",
+                    "⚠️ Nécessite la configuration des URLs CORS"
+                ],
+            };
+        }
+
+        // SERVICE → SERVER
+        if (currentType === ClientType.SERVICE && selectedType === ClientType.SERVER) {
+            return {
+                icon: <Info className="h-5 w-5 text-blue-600" />,
+                variant: "info" as const,
+                title: "SERVICE → SERVER : Ce changement va :",
+                items: [
+                    "Conserver le client secret actuel",
+                    "Activer l'endpoint /oauth2/authorize",
+                    "⚠️ Nécessite la configuration des redirect URIs"
+                ],
+            };
+        }
+
+        return null;
     };
 
     const impactMessage = getImpactMessage();
