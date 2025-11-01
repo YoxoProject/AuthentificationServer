@@ -18,6 +18,7 @@ import {ThemeProvider} from "@/components/theme/ThemeProvider";
 import {Toaster} from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfirmDialogProvider } from '@/contexts/ConfirmDialogContext';
+import { AuthProvider } from '@/auth';
 
 // Configuration du QueryClient
 const queryClient = new QueryClient({
@@ -33,14 +34,16 @@ const queryClient = new QueryClient({
 
 function App() {
     return (
-        <QueryClientProvider client={queryClient}>
-            <ConfirmDialogProvider>
-                <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-                    <RouterProvider router={router} />
-                    <Toaster />
-                </ThemeProvider>
-            </ConfirmDialogProvider>
-        </QueryClientProvider>
+        <AuthProvider>
+            <QueryClientProvider client={queryClient}>
+                <ConfirmDialogProvider>
+                    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+                        <RouterProvider router={router} />
+                        <Toaster />
+                    </ThemeProvider>
+                </ConfirmDialogProvider>
+            </QueryClientProvider>
+        </AuthProvider>
     );
 }
 

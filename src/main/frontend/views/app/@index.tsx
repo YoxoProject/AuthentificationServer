@@ -13,7 +13,7 @@ import ClientListItemDTO from "@/generated/fr/romaindu35/authserver/dto/ClientLi
  * Configuration de la route - nécessite l'authentification
  */
 export const config = {
-    loginRequired: false,
+    loginRequired: true,
 };
 
 /**

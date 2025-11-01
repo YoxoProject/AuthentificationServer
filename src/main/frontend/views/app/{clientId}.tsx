@@ -60,7 +60,7 @@ type ClientConfigFormValues = z.infer<typeof clientConfigSchema>;
  * Configuration de la route - nécessite l'authentification
  */
 export const config = {
-    loginRequired: false,
+    loginRequired: true,
 };
 
 /**
