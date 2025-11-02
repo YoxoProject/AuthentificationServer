@@ -8,6 +8,8 @@ import {Button} from "@/components/ui/button";
 import {Loader2, Plus} from "lucide-react";
 import {toast} from "sonner";
 import ClientListItemDTO from "@/generated/fr/romaindu35/authserver/dto/ClientListItemDTO";
+import {Profile} from "@/components/app/Profile";
+import {ThemeToggle} from "@/components/theme/ThemeToggle";
 
 /**
  * Configuration de la route - nécessite l'authentification
@@ -69,17 +71,21 @@ export default function AppPage() {
         <div className="min-h-screen bg-background">
             <div className="container mx-auto px-4 py-8">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex justify-between mb-8 max-md:flex-col gap-4">
                     <div>
                         <h1 className="text-3xl font-bold">Mes Applications</h1>
                         <p className="text-muted-foreground mt-1">
                             Gérez vos clients OAuth2 et leurs configurations
                         </p>
                     </div>
-                    <Button onClick={() => setIsCreateDialogOpen(true)} size="lg">
-                        <Plus className="mr-2 h-4 w-4"/>
-                        Créer une application
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button onClick={() => setIsCreateDialogOpen(true)} className="flex-1">
+                            <Plus className="mr-2 h-4 w-4"/>
+                            Créer une application
+                        </Button>
+                        <Profile />
+                        <ThemeToggle />
+                    </div>
                 </div>
 
                 {/* Contenu principal */}

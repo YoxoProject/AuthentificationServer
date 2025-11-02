@@ -22,6 +22,8 @@ import {Label} from "@/components/ui/label";
 import {useConfirm} from "@/contexts/ConfirmDialogContext";
 import {ChangeClientTypeDialog} from "@/components/app/ChangeClientTypeDialog";
 import {UsageTab} from "@/components/app/usage/UsageTab";
+import {Profile} from "@/components/app/Profile";
+import {ThemeToggle} from "@/components/theme/ThemeToggle";
 
 // Schéma de validation Zod
 const clientConfigSchema = z.object({
@@ -330,17 +332,22 @@ export default function ClientDetailsPage() {
             <div className="container mx-auto px-4 py-8 max-w-4xl">
                 {/* Header */}
                 <div className="mb-6">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate("/app")}
-                        className="mb-4"
-                        disabled={form.formState.isDirty}
-                        title={form.formState.isDirty ? "Enregistrez vos modifications avant de quitter" : ""}
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4"/>
-                        Retour aux applications
-                    </Button>
+                    <div className="flex items-center gap-4 justify-between mb-4 flex-wrap-reverse">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate("/app")}
+                            disabled={form.formState.isDirty}
+                            title={form.formState.isDirty ? "Enregistrez vos modifications avant de quitter" : ""}
+                        >
+                            <ArrowLeft className="mr-2 h-4 w-4"/>
+                            Retour aux applications
+                        </Button>
+                        <div className="flex gap-2 ml-auto">
+                            <Profile />
+                            <ThemeToggle />
+                        </div>
+                    </div>
                     <h1 className="text-3xl font-bold">{client.configuration.clientName}</h1>
                     <p className="text-muted-foreground mt-1">
                         Propriétaire: {client.ownerUsername}
