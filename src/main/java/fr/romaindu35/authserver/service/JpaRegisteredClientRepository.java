@@ -7,6 +7,8 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.util.Assert;
 
+import java.util.Optional;
+
 @AllArgsConstructor
 public class JpaRegisteredClientRepository implements RegisteredClientRepository {
 
@@ -28,7 +30,7 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
     @Override
     public RegisteredClient findByClientId(String clientId) {
         Assert.hasText(clientId, "clientId cannot be empty");
-        OAuth2Client oauth2RegisteredClient = this.registeredClientRepository.findByClientId(clientId);
-        return oauth2RegisteredClient != null ? ModelMapper.convertRegisteredClient(oauth2RegisteredClient) : null;
+        Optional<OAuth2Client> oauth2RegisteredClientOpt = this.registeredClientRepository.findByClientId(clientId);
+        return oauth2RegisteredClientOpt.map(ModelMapper::convertRegisteredClient).orElse(null);
     }
 }

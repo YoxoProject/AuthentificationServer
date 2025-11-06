@@ -45,3 +45,5 @@ keystore.jks
 src/main/bundles/
 CLAUDE.md
 .claude
+docs
+GeoLite2-City.mmdb
