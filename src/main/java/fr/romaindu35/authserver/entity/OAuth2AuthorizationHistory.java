@@ -35,7 +35,7 @@ public class OAuth2AuthorizationHistory {
     private UUID userId;
 
     @Column(name = "client_id", nullable = false)
-    private String clientId;
+    private UUID clientId;
 
     // Scopes granted - simple Set like OAuth2Client.redirectUris
     @Column(nullable = false)

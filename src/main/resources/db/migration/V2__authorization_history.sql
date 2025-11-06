@@ -16,7 +16,7 @@ CREATE TABLE oauth2_authorization_history (
 
     -- Identifiants de l'autorisation
     user_id UUID NOT NULL,
-    client_id VARCHAR(255) NOT NULL,
+    client_id UUID NOT NULL,
 
     -- Scopes accordés (tableau)
     authorized_scopes TEXT[] NOT NULL,

@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Contrôleur Hilla pour la gestion des clients OAuth2.
@@ -37,7 +38,7 @@ public class ClientManagementController {
      * @param clientName Nom du client à créer
      * @return L'identifiant unique du client créé
      */
-    public String createClient(String clientName) {
+    public UUID createClient(String clientName) {
         User currentUser = getCurrentUser();
         return clientManagementService.createClient(clientName, currentUser.getId());
     }
@@ -59,7 +60,7 @@ public class ClientManagementController {
      * @param clientId Identifiant unique du client
      * @return Détails complets du client
      */
-    public ClientDetailsDTO getClientDetails(String clientId) {
+    public ClientDetailsDTO getClientDetails(UUID clientId) {
         User currentUser = getCurrentUser();
         return clientManagementService.getClientDetails(clientId, currentUser.getId());
     }
@@ -70,7 +71,7 @@ public class ClientManagementController {
      * @param clientId      Identifiant unique du client
      * @param configuration Nouvelle configuration
      */
-    public void updateClientConfiguration(String clientId, ClientConfigurationDTO configuration) {
+    public void updateClientConfiguration(UUID clientId, ClientConfigurationDTO configuration) {
         User currentUser = getCurrentUser();
         clientManagementService.updateClientConfiguration(clientId, configuration, currentUser.getId());
     }
@@ -82,7 +83,7 @@ public class ClientManagementController {
      * @param clientId Identifiant unique du client
      * @return Le nouveau client ID en clair
      */
-    public String regenerateClientId(String clientId) {
+    public String regenerateClientId(UUID clientId) {
         User currentUser = getCurrentUser();
         return clientManagementService.regenerateClientId(clientId, currentUser.getId());
     }
@@ -95,7 +96,7 @@ public class ClientManagementController {
      * @param clientId Identifiant unique du client
      * @return Le nouveau secret en clair
      */
-    public String regenerateClientSecret(String clientId) {
+    public String regenerateClientSecret(UUID clientId) {
         User currentUser = getCurrentUser();
         return clientManagementService.regenerateClientSecret(clientId, currentUser.getId());
     }
@@ -106,7 +107,7 @@ public class ClientManagementController {
      *
      * @param clientId Identifiant unique du client
      */
-    public void deleteClient(String clientId) {
+    public void deleteClient(UUID clientId) {
         User currentUser = getCurrentUser();
         clientManagementService.deleteClient(clientId, currentUser.getId());
     }

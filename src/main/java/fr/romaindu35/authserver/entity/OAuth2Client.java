@@ -17,7 +17,8 @@ import java.util.UUID;
 public class OAuth2Client {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(name = "client_id", unique = true, nullable = false)
     private String clientId;

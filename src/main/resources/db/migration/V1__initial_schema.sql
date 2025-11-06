@@ -37,7 +37,7 @@ COMMENT ON COLUMN users.additional_permissions IS 'Tableau des permissions (scop
 -- Description: Stocke les configurations des clients OAuth2
 -- =============================================================================
 CREATE TABLE oauth2_client (
-    id VARCHAR(255) PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     client_id VARCHAR(255) UNIQUE NOT NULL,
     client_id_issued_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     client_secret VARCHAR(255),

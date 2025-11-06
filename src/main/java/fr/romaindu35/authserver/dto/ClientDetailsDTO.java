@@ -13,7 +13,7 @@ public record ClientDetailsDTO(
         /**
          * Identifiant unique du client OAuth2
          */
-        @Nonnull String id,
+        @Nonnull UUID id,
 
         /**
          * Configuration du client (nom, type, redirects, CORS, official)

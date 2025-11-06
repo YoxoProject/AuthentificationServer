@@ -8,6 +8,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.util.Assert;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @AllArgsConstructor
 public class JpaRegisteredClientRepository implements RegisteredClientRepository {
@@ -22,7 +23,7 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
     @Override
     public RegisteredClient findById(String id) {
         Assert.hasText(id, "id cannot be empty");
-        return this.registeredClientRepository.findById(id)
+        return this.registeredClientRepository.findById(UUID.fromString(id))
                 .map(ModelMapper::convertRegisteredClient)
                 .orElse(null);
     }

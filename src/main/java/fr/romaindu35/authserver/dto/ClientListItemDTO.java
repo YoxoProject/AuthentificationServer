@@ -4,6 +4,7 @@ import fr.romaindu35.authserver.entity.OAuth2Client;
 import jakarta.annotation.Nonnull;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * DTO représentant un élément de la liste des clients OAuth2.
@@ -13,7 +14,7 @@ public record ClientListItemDTO(
         /**
          * Identifiant unique du client OAuth2
          */
-        @Nonnull String id,
+        @Nonnull UUID id,
 
         /**
          * Nom d'affichage du client

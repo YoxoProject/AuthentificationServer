@@ -216,7 +216,7 @@ public final class ModelMapper {
                 .refreshTokenTimeToLive(Duration.ofDays(365))
                 .build();
 
-        RegisteredClient.Builder registeredClientBuilder = RegisteredClient.withId(oAuth2Client.getId())
+        RegisteredClient.Builder registeredClientBuilder = RegisteredClient.withId(oAuth2Client.getId().toString())
                 .clientId(oAuth2Client.getClientId())
                 .clientIdIssuedAt(oAuth2Client.getClientIdIssuedAt())
                 .clientSecret(oAuth2Client.getClientSecret())

@@ -47,7 +47,7 @@ public class AuthorizationEventDTO {
     /**
      * Identifiant du client OAuth2 concerné.
      */
-    private String clientId;
+    private UUID clientId;
 
     /**
      * Nom d'affichage du client OAuth2.

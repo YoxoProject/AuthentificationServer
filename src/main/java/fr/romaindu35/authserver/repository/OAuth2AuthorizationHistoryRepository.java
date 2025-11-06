@@ -25,7 +25,7 @@ public interface OAuth2AuthorizationHistoryRepository extends JpaRepository<OAut
      * @param clientId the OAuth2 client ID
      * @return Optional containing the active authorization if found
      */
-    Optional<OAuth2AuthorizationHistory> findByUserIdAndClientIdAndIsActiveTrue(UUID userId, String clientId);
+    Optional<OAuth2AuthorizationHistory> findByUserIdAndClientIdAndIsActiveTrue(UUID userId, UUID clientId);
 
     /**
      * Finds all authorization history entries for a specific user and client,
@@ -36,7 +36,7 @@ public interface OAuth2AuthorizationHistoryRepository extends JpaRepository<OAut
      * @param clientId the OAuth2 client ID
      * @return List of authorization history entries, ordered by granted_at ASC
      */
-    List<OAuth2AuthorizationHistory> findByUserIdAndClientIdOrderByGrantedAtAsc(UUID userId, String clientId);
+    List<OAuth2AuthorizationHistory> findByUserIdAndClientIdOrderByGrantedAtAsc(UUID userId, UUID clientId);
 
     /**
      * Finds all active authorizations for a specific user.

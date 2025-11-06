@@ -75,7 +75,7 @@ public class AuthorizationManagementController {
     public List<AuthorizationEventDTO> getAuthorizationEvents(UUID clientId) {
         User currentUser = getCurrentUser();
 
-        return revocationService.getAuthorizationEvents(currentUser.getId(), clientId.toString());
+        return revocationService.getAuthorizationEvents(currentUser.getId(), clientId);
     }
 
     /**
@@ -87,7 +87,7 @@ public class AuthorizationManagementController {
     public boolean revokeAuthorization(UUID clientId) {
         User currentUser = getCurrentUser();
 
-        return revocationService.revokeAuthorization(currentUser.getId(), clientId.toString());
+        return revocationService.revokeAuthorization(currentUser.getId(), clientId);
     }
 
     /**
@@ -120,7 +120,7 @@ public class AuthorizationManagementController {
                             .orElse(null);
 
                     String clientName = client != null ? client.getClientName() : "Client inconnu";
-                    UUID clientUuid = client != null ? UUID.fromString(client.getId()) : UUID.randomUUID();
+                    UUID clientUuid = client != null ? client.getId() : UUID.randomUUID();
 
                     return new AuthorizationWithClientDTO(
                             auth.getId(),

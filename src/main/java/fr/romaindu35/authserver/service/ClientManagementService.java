@@ -46,14 +46,13 @@ public class ClientManagementService {
      * @return L'identifiant unique du client créé
      */
     @Transactional
-    public String createClient(String clientName, UUID ownerId) {
+    public UUID createClient(String clientName, UUID ownerId) {
         // Vérifier que l'utilisateur existe
         if (!userRepository.existsById(ownerId)) {
             throw new IllegalArgumentException("Utilisateur introuvable avec l'ID: " + ownerId);
         }
 
         OAuth2Client client = new OAuth2Client();
-        client.setId(UUID.randomUUID().toString());
         client.setClientName(clientName);
         client.setOwnerId(ownerId);
         client.setClientIdIssuedAt(Instant.now());
@@ -101,7 +100,7 @@ public class ClientManagementService {
      * @throws IllegalArgumentException si le client n'existe pas ou si l'utilisateur n'est pas le propriétaire
      */
     @Transactional(readOnly = true)
-    public ClientDetailsDTO getClientDetails(String clientId, UUID ownerId) {
+    public ClientDetailsDTO getClientDetails(UUID clientId, UUID ownerId) {
         OAuth2Client client = oauth2ClientRepository.findById(clientId)
                 .orElseThrow(() -> new IllegalArgumentException("Client introuvable avec l'ID: " + clientId));
 
@@ -151,7 +150,7 @@ public class ClientManagementService {
      * @throws SecurityException        si l'utilisateur n'est pas le propriétaire
      */
     @Transactional
-    public void updateClientConfiguration(String clientId, ClientConfigurationDTO configuration, UUID ownerId) {
+    public void updateClientConfiguration(UUID clientId, ClientConfigurationDTO configuration, UUID ownerId) {
         OAuth2Client client = oauth2ClientRepository.findById(clientId)
                 .orElseThrow(() -> new IllegalArgumentException("Client introuvable avec l'ID: " + clientId));
 
@@ -224,7 +223,7 @@ public class ClientManagementService {
      * @throws SecurityException        si l'utilisateur n'est pas le propriétaire
      */
     @Transactional
-    public String regenerateClientId(String clientId, UUID ownerId) {
+    public String regenerateClientId(UUID clientId, UUID ownerId) {
         OAuth2Client client = oauth2ClientRepository.findById(clientId)
                 .orElseThrow(() -> new IllegalArgumentException("Client introuvable avec l'ID: " + clientId));
 
@@ -253,7 +252,7 @@ public class ClientManagementService {
      * @throws SecurityException        si l'utilisateur n'est pas le propriétaire
      */
     @Transactional
-    public String regenerateClientSecret(String clientId, UUID ownerId) {
+    public String regenerateClientSecret(UUID clientId, UUID ownerId) {
         OAuth2Client client = oauth2ClientRepository.findById(clientId)
                 .orElseThrow(() -> new IllegalArgumentException("Client introuvable avec l'ID: " + clientId));
 
@@ -285,7 +284,7 @@ public class ClientManagementService {
      * @throws SecurityException        si l'utilisateur n'est pas le propriétaire
      */
     @Transactional
-    public void deleteClient(String clientId, UUID ownerId) {
+    public void deleteClient(UUID clientId, UUID ownerId) {
         OAuth2Client client = oauth2ClientRepository.findById(clientId)
                 .orElseThrow(() -> new IllegalArgumentException("Client introuvable avec l'ID: " + clientId));
 

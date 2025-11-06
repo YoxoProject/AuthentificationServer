@@ -49,7 +49,7 @@ public class OAuth2AuthorizationRevocationService {
      * @return true if revocation was successful, false if no active authorization was found
      */
     @Transactional
-    public boolean revokeAuthorization(UUID userId, String clientId) {
+    public boolean revokeAuthorization(UUID userId, UUID clientId) {
         log.info("Attempting to revoke authorization for user {} and client {}", userId, clientId);
 
         // Find and mark the active authorization history entry as revoked
@@ -75,7 +75,7 @@ public class OAuth2AuthorizationRevocationService {
         // Delete all tokens from Redis for this client-user pair
         List<OAuth2AuthorizationGrantAuthorization> authorizations =
                 authorizationGrantAuthorizationRepository.findByRegisteredClientIdAndPrincipalName(
-                        clientId, user.getUsername());
+                        clientId.toString(), user.getUsername());
 
         int deletedCount = 0;
         for (OAuth2AuthorizationGrantAuthorization auth : authorizations) {
@@ -99,7 +99,7 @@ public class OAuth2AuthorizationRevocationService {
      * @param clientId the OAuth2 client ID
      * @return List of authorization events sorted by timestamp DESC (most recent first)
      */
-    public List<AuthorizationEventDTO> getAuthorizationEvents(UUID userId, String clientId) {
+    public List<AuthorizationEventDTO> getAuthorizationEvents(UUID userId, UUID clientId) {
         log.debug("Getting authorization events for user {} and client {}", userId, clientId);
 
         // Récupérer l'historique complet pour ce user-client

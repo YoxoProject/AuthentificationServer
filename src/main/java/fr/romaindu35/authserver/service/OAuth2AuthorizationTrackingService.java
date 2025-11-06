@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Centralized service for tracking OAuth2 authorization grants.
@@ -82,7 +83,7 @@ public class OAuth2AuthorizationTrackingService {
      */
     private void recordAuthorizationHistory(OAuth2AuthorizationGrantAuthorization authorization) throws UnknownHostException {
         String principalName = authorization.getPrincipalName();
-        String clientId = authorization.getRegisteredClientId();
+        UUID clientId = UUID.fromString(authorization.getRegisteredClientId());
         Set<String> newScopes = authorization.getAuthorizedScopes();
 
         // Find user and client entities
@@ -125,7 +126,7 @@ public class OAuth2AuthorizationTrackingService {
      * @param clientId  the client ID
      * @param newScopes the new requested scopes
      */
-    private void handleScopeChanges(java.util.UUID userId, String clientId, Set<String> newScopes) {
+    private void handleScopeChanges(java.util.UUID userId, UUID clientId, Set<String> newScopes) {
         Optional<OAuth2AuthorizationHistory> existingAuth =
                 authorizationHistoryRepository.findByUserIdAndClientIdAndIsActiveTrue(userId, clientId);
 
