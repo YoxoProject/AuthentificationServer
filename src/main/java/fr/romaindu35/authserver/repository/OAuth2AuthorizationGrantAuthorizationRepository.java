@@ -7,6 +7,8 @@ import fr.romaindu35.authserver.entity.OidcAuthorizationCodeGrantAuthorization;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface OAuth2AuthorizationGrantAuthorizationRepository extends CrudRepository<OAuth2AuthorizationGrantAuthorization, String> {
 
@@ -32,4 +34,14 @@ public interface OAuth2AuthorizationGrantAuthorizationRepository extends CrudRep
 
     <T extends OAuth2DeviceCodeGrantAuthorization> T findByDeviceStateOrDeviceCode_TokenValueOrUserCode_TokenValue(String deviceState, String deviceCode,
       String userCode);
+
+    /**
+     * Finds all authorizations for a specific client and user (principal).
+     * Used for revoking all tokens when a user revokes authorization for a client.
+     *
+     * @param registeredClientId the client ID
+     * @param principalName the username (principal name)
+     * @return List of all authorizations for the client-user pair
+     */
+    List<OAuth2AuthorizationGrantAuthorization> findByRegisteredClientIdAndPrincipalName(String registeredClientId, String principalName);
 }

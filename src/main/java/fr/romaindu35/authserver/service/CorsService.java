@@ -5,6 +5,7 @@ import fr.romaindu35.authserver.repository.OAuth2ClientRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -21,10 +22,11 @@ public class CorsService {
             return false;
         }
 
-        OAuth2Client client = oAuth2ClientRepository.findByClientId(clientId);
-        if (client == null) {
+        Optional<OAuth2Client> clientOpt = oAuth2ClientRepository.findByClientId(clientId);
+        if (clientOpt.isEmpty()) {
             return false;
         }
+        OAuth2Client client = clientOpt.get();
 
         // Seuls les clients de type CLIENT peuvent utiliser CORS
         if (!OAuth2Client.ClientType.CLIENT.equals(client.getClientType())) {

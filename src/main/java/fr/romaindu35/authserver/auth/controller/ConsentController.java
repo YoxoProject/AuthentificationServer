@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 
 @BrowserCallable
@@ -26,8 +27,9 @@ public class ConsentController {
     public ConsentData getConsentData(String clientId, String scope) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Permissions.PermissionData[] permissions = Arrays.stream(scope.split(" ")).map(Permissions::toPermissionData).toArray(Permissions.PermissionData[]::new);
-        OAuth2Client client = oAuth2ClientRepository.findByClientId(clientId);
-        if (client != null) {
+        Optional<OAuth2Client> clientOpt = oAuth2ClientRepository.findByClientId(clientId);
+        if (clientOpt.isPresent()) {
+            OAuth2Client client = clientOpt.get();
             User user = userRepository.findById(client.getOwnerId()).orElseThrow();
             return new ConsentData(auth.getName(), client.getClientName(), user.getUsername(), permissions);
         }

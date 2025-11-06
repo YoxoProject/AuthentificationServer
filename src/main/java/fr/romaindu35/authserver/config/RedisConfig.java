@@ -3,6 +3,7 @@ package fr.romaindu35.authserver.config;
 import fr.romaindu35.authserver.convert.*;
 import fr.romaindu35.authserver.repository.OAuth2AuthorizationGrantAuthorizationRepository;
 import fr.romaindu35.authserver.repository.OAuth2UserConsentRepository;
+import fr.romaindu35.authserver.service.OAuth2AuthorizationTrackingService;
 import fr.romaindu35.authserver.service.RedisOAuth2AuthorizationConsentService;
 import fr.romaindu35.authserver.service.RedisOAuth2AuthorizationService;
 import org.springframework.beans.factory.annotation.Value;
@@ -67,9 +68,15 @@ public class RedisConfig {
 
     @Bean
     @Order(4)
-    public RedisOAuth2AuthorizationService authorizationService(RegisteredClientRepository registeredClientRepository,
-                                                                OAuth2AuthorizationGrantAuthorizationRepository authorizationGrantAuthorizationRepository) {
-        return new RedisOAuth2AuthorizationService(registeredClientRepository, authorizationGrantAuthorizationRepository);
+    public RedisOAuth2AuthorizationService authorizationService(
+            RegisteredClientRepository registeredClientRepository,
+            OAuth2AuthorizationGrantAuthorizationRepository authorizationGrantAuthorizationRepository,
+            OAuth2AuthorizationTrackingService trackingService) {
+        return new RedisOAuth2AuthorizationService(
+                registeredClientRepository,
+                authorizationGrantAuthorizationRepository,
+                trackingService
+        );
     }
 
     @Bean

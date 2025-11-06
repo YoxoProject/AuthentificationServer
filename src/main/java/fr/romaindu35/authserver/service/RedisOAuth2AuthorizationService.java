@@ -2,6 +2,7 @@ package fr.romaindu35.authserver.service;
 
 import fr.romaindu35.authserver.entity.OAuth2AuthorizationGrantAuthorization;
 import fr.romaindu35.authserver.repository.OAuth2AuthorizationGrantAuthorizationRepository;
+import lombok.AllArgsConstructor;
 import org.springframework.lang.Nullable;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
@@ -12,24 +13,23 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.util.Assert;
 
+@AllArgsConstructor
 public class RedisOAuth2AuthorizationService implements OAuth2AuthorizationService {
 
     private final RegisteredClientRepository registeredClientRepository;
-
     private final OAuth2AuthorizationGrantAuthorizationRepository authorizationGrantAuthorizationRepository;
-
-    public RedisOAuth2AuthorizationService(RegisteredClientRepository registeredClientRepository,
-      OAuth2AuthorizationGrantAuthorizationRepository authorizationGrantAuthorizationRepository) {
-        Assert.notNull(registeredClientRepository, "registeredClientRepository cannot be null");
-        Assert.notNull(authorizationGrantAuthorizationRepository, "authorizationGrantAuthorizationRepository cannot be null");
-        this.registeredClientRepository = registeredClientRepository;
-        this.authorizationGrantAuthorizationRepository = authorizationGrantAuthorizationRepository;
-    }
+    private final OAuth2AuthorizationTrackingService trackingService;
 
     @Override
     public void save(OAuth2Authorization authorization) {
         Assert.notNull(authorization, "authorization cannot be null");
-        OAuth2AuthorizationGrantAuthorization authorizationGrantAuthorization = ModelMapper.convertOAuth2AuthorizationGrantAuthorization(authorization);
+        OAuth2AuthorizationGrantAuthorization authorizationGrantAuthorization =
+                ModelMapper.convertOAuth2AuthorizationGrantAuthorization(authorization);
+
+        // Centralized tracking service handles all authorization history logic
+        trackingService.trackIfNew(authorizationGrantAuthorization);
+
+        // Save to Redis (this service's sole responsibility)
         this.authorizationGrantAuthorizationRepository.save(authorizationGrantAuthorization);
     }
 
