@@ -1,9 +1,9 @@
 import {useQuery} from "@tanstack/react-query";
 import {AuthorizationManagementController} from "@/generated/endpoints";
-import {Profile} from "@/components/app/Profile";
+import {Profile} from "@/components/Profile";
 import {ThemeToggle} from "@/components/theme/ThemeToggle";
 import {Loader2, ShieldAlert} from "lucide-react";
-import {ConnectionCard} from "@/components/app/ConnectionCard";
+import {ConnectionCard} from "@/components/connections/ConnectionCard";
 import AuthorizationWithClientDTO from "@/generated/fr/romaindu35/authserver/dto/AuthorizationWithClientDTO";
 
 export const config = {

@@ -8,7 +8,7 @@ import {Button} from "@/components/ui/button";
 import {Loader2, Plus} from "lucide-react";
 import {toast} from "sonner";
 import ClientListItemDTO from "@/generated/fr/romaindu35/authserver/dto/ClientListItemDTO";
-import {Profile} from "@/components/app/Profile";
+import {Profile} from "@/components/Profile";
 import {ThemeToggle} from "@/components/theme/ThemeToggle";
 
 /**

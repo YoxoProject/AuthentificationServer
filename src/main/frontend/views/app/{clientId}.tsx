@@ -22,7 +22,7 @@ import {Label} from "@/components/ui/label";
 import {useConfirm} from "@/contexts/ConfirmDialogContext";
 import {ChangeClientTypeDialog} from "@/components/app/ChangeClientTypeDialog";
 import {UsageTab} from "@/components/app/usage/UsageTab";
-import {Profile} from "@/components/app/Profile";
+import {Profile} from "@/components/Profile";
 import {ThemeToggle} from "@/components/theme/ThemeToggle";
 
 // Schéma de validation Zod
