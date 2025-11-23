@@ -24,6 +24,9 @@ public class GeoLocationService {
 
     private DatabaseReader databaseReader;
 
+    @Value("${geoip.enabled}")
+    private boolean geoIpEnabled;
+
     @Value("${geoip.database.path}")
     private String GEOIP_DATABASE_PATH;
 
@@ -33,6 +36,10 @@ public class GeoLocationService {
      */
     @PostConstruct
     public void init() {
+        if(!geoIpEnabled) {
+            log.info("GeoIP lookup is disabled by configuration.");
+            return;
+        }
         File database = new File(GEOIP_DATABASE_PATH);
         if (!database.exists()) {
             log.warn("GeoIP database not found at: {}. Geolocation features will be unavailable.", GEOIP_DATABASE_PATH);
