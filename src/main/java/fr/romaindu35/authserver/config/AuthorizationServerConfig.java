@@ -24,7 +24,13 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.oauth2.server.authorization.web.authentication.ClientSecretBasicAuthenticationConverter;
+import org.springframework.security.oauth2.server.authorization.web.authentication.ClientSecretPostAuthenticationConverter;
+import org.springframework.security.oauth2.server.authorization.web.authentication.JwtClientAssertionAuthenticationConverter;
+import org.springframework.security.oauth2.server.authorization.web.authentication.PublicClientAuthenticationConverter;
+import org.springframework.security.oauth2.server.authorization.web.authentication.X509ClientCertificateAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.DelegatingAuthenticationConverter;
 
 import java.io.IOException;
 import java.security.KeyStore;
@@ -44,7 +50,20 @@ public class AuthorizationServerConfig {
     public SecurityFilterChain authServerSecurityFilterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
         http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
-                .authorizationEndpoint(authorizationEndpoint -> authorizationEndpoint.consentPage("/oauth2/consent"));
+                .authorizationEndpoint(authorizationEndpoint -> authorizationEndpoint.consentPage("/oauth2/consent"))
+                .clientAuthentication(clientAuthentication -> {
+                    clientAuthentication.authenticationConverter(
+                            // On viens définir l'ordre dans lequel les convertisseurs vont être appelés pour authentifier un client OAuth2
+                            // On viens préférer le client_secret_post ce qui permet de l'utiliser même quand un header Authorization est présent
+                            new DelegatingAuthenticationConverter(Arrays.asList(
+                                    new ClientSecretPostAuthenticationConverter(),
+                                    new JwtClientAssertionAuthenticationConverter(),
+                                    new ClientSecretBasicAuthenticationConverter(),
+                                    new PublicClientAuthenticationConverter(),
+                                    new X509ClientCertificateAuthenticationConverter()
+                            ))
+                    );
+                });
         http.cors(Customizer.withDefaults());
         http.formLogin(
                 form -> form.loginPage("/login").permitAll().defaultSuccessUrl("/", false)
@@ -86,7 +105,7 @@ public class AuthorizationServerConfig {
 
             // On recupère l'ensemble des permissions que possède l'utilisateur
             Set<Permissions> userPermissions = new HashSet<>();
-            userRepository.findByUsername(username).ifPresent((user) -> {;
+            userRepository.findByUsername(username).ifPresent((user) -> {
                 userPermissions.addAll(user.getAdditionalPermissions());
                 userPermissions.addAll(Arrays.stream(Permissions.getAlwaysGrantedPermissions()).toList());
             });
