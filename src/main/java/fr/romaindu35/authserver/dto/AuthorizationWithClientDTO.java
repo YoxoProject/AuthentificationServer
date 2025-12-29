@@ -75,6 +75,11 @@ public record AuthorizationWithClientDTO(
         /**
          * Whether this authorization is currently active
          */
-        boolean isActive
+        boolean isActive,
+
+        /**
+         * Number of active refresh tokens (valid sessions) for this client
+         */
+        int activeTokenCount
 ) {
 }

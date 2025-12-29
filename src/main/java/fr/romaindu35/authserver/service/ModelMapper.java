@@ -16,14 +16,9 @@ public final class ModelMapper {
 
     public static RegisteredClient convertRegisteredClient(OAuth2Client oAuth2Client) {
         ClientSettings.Builder clientSettingsBuilder = ClientSettings.builder();
-        if (!oAuth2Client.isOfficial()) {
-            clientSettingsBuilder.requireAuthorizationConsent(true);
-        }
-        TokenSettings tokenSettings = TokenSettings.builder()
+        TokenSettings.Builder tokenSettingsBuilder = TokenSettings.builder()
                 .accessTokenTimeToLive(Duration.ofMinutes(30))
-                .deviceCodeTimeToLive(Duration.ofSeconds(1)) // Aucun device code ne sera utilisé
-                .refreshTokenTimeToLive(Duration.ofDays(365))
-                .build();
+                .deviceCodeTimeToLive(Duration.ofSeconds(1)); // Aucun device code ne sera utilisé
 
         RegisteredClient.Builder registeredClientBuilder = RegisteredClient.withId(oAuth2Client.getId().toString())
                 .clientId(oAuth2Client.getClientId())
@@ -32,26 +27,59 @@ public final class ModelMapper {
                 .clientSecretExpiresAt(oAuth2Client.getClientSecretExpiresAt())
                 .clientName(oAuth2Client.getClientName());
 
+        // Redirect URIs
         if (!CollectionUtils.isEmpty(oAuth2Client.getRedirectUris())) {
             registeredClientBuilder.redirectUris((redirectUris) -> redirectUris.addAll(oAuth2Client.getRedirectUris()));
         }
-        if (oAuth2Client.getClientType().equals(OAuth2Client.ClientType.CLIENT)) {
-            registeredClientBuilder.clientAuthenticationMethod(ClientAuthenticationMethod.NONE);
-            clientSettingsBuilder.requireProofKey(true);
-        } else {
+
+        // Configuration spécifique par type de client
+        OAuth2Client.ClientType type = oAuth2Client.getClientType();
+
+        if (type == OAuth2Client.ClientType.SERVICE) {
+            // SERVICE: Machine-to-Machine (Client Credentials)
             registeredClientBuilder.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST);
-        }
-        if (oAuth2Client.getClientType().equals(OAuth2Client.ClientType.SERVICE)) {
             registeredClientBuilder.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS);
             registeredClientBuilder.scope(Permissions.API_ACCESS.getScopeName());
+            
+            // Pas de consentement nécessaire pour les services (implicite)
+            clientSettingsBuilder.requireAuthorizationConsent(false);
+            
         } else {
+            // CLIENT (SPA) et SERVER (Web Confidential)
+            
+            // Grant Types communs
             registeredClientBuilder.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE);
             registeredClientBuilder.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN);
-            registeredClientBuilder.scopes(scopes -> scopes.addAll(Arrays.stream(Permissions.values()).filter(permissions -> oAuth2Client.isOfficial() || !permissions.equals(Permissions.API_ACCESS)).map(Permissions::getScopeName).collect(Collectors.toSet())));
+
+            // Scopes: Plus de restriction "Officiel" pour l'accès API. Tout le monde a accès à tout (filtré ensuite par l'utilisateur)
+            registeredClientBuilder.scopes(scopes -> 
+                scopes.addAll(Arrays.stream(Permissions.values())
+                      .map(Permissions::getScopeName)
+                      .collect(Collectors.toSet()))
+            );
+
+            // Consentement: Seul "Officiel" permet de passer outre
+            if (!oAuth2Client.isOfficial()) {
+                clientSettingsBuilder.requireAuthorizationConsent(true);
+            }
+
+            // Refresh Token Rotation: OBLIGATOIRE pour SPA et SERVER pour la sécurité
+            tokenSettingsBuilder.reuseRefreshTokens(false);
+
+            if (type == OAuth2Client.ClientType.CLIENT) {
+                // SPA: Public Client (Pas de secret stocké)
+                registeredClientBuilder.clientAuthenticationMethod(ClientAuthenticationMethod.NONE);
+                clientSettingsBuilder.requireProofKey(true); // PKCE Obligatoire
+                tokenSettingsBuilder.refreshTokenTimeToLive(Duration.ofDays(14));
+            } else {
+                // SERVER: Confidential Client (Secret stocké)
+                registeredClientBuilder.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST);
+                tokenSettingsBuilder.refreshTokenTimeToLive(Duration.ofDays(90)); // Env. 3 mois
+            }
         }
 
         registeredClientBuilder.clientSettings(clientSettingsBuilder.build());
-        registeredClientBuilder.tokenSettings(tokenSettings);
+        registeredClientBuilder.tokenSettings(tokenSettingsBuilder.build());
         return registeredClientBuilder.build();
     }
 }

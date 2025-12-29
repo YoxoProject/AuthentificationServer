@@ -6,9 +6,11 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import fr.romaindu35.authserver.repository.OAuth2AuthorizationHistoryRepository;
 import fr.romaindu35.authserver.repository.OAuth2ClientRepository;
 import fr.romaindu35.authserver.repository.UserRepository;
 import fr.romaindu35.authserver.service.JpaRegisteredClientRepository;
+import fr.romaindu35.authserver.service.OAuth2AuthorizationRevocationService;
 import fr.romaindu35.authserver.service.OAuth2AuthorizationTrackingService;
 import fr.romaindu35.authserver.service.TrackingOAuth2AuthorizationService;
 import fr.romaindu35.authserver.utils.Permissions;
@@ -90,6 +92,27 @@ public class AuthorizationServerConfig {
                                                            OAuth2AuthorizationTrackingService trackingService) {
         JdbcOAuth2AuthorizationService jdbcService = new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
         return new TrackingOAuth2AuthorizationService(jdbcService, trackingService);
+    }
+
+    @Bean
+    public OAuth2AuthorizationRevocationService oAuth2AuthorizationRevocationService(OAuth2AuthorizationHistoryRepository authorizationHistoryRepository,
+                                                                                     OAuth2AuthorizationConsentService authorizationConsentService,
+                                                                                     JdbcTemplate jdbcTemplate,
+                                                                                     UserRepository userRepository,
+                                                                                     OAuth2ClientRepository clientRepository,
+                                                                                     RegisteredClientRepository registeredClientRepository) {
+        // Manually instantiate the JDBC service here to break the circular dependency.
+        // This instance is isolated and won't be picked up by the TrackingService or Spring Security auto-config.
+        JdbcOAuth2AuthorizationService jdbcService = new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
+
+        return new OAuth2AuthorizationRevocationService(
+                authorizationHistoryRepository,
+                jdbcService,
+                authorizationConsentService,
+                jdbcTemplate,
+                userRepository,
+                clientRepository
+        );
     }
 
     @Bean

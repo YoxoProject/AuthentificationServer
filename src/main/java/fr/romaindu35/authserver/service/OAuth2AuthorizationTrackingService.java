@@ -1,18 +1,18 @@
 package fr.romaindu35.authserver.service;
 
 import fr.romaindu35.authserver.entity.OAuth2AuthorizationHistory;
+import fr.romaindu35.authserver.entity.OAuth2Client;
 import fr.romaindu35.authserver.entity.User;
 import fr.romaindu35.authserver.repository.OAuth2AuthorizationHistoryRepository;
+import fr.romaindu35.authserver.repository.OAuth2ClientRepository;
 import fr.romaindu35.authserver.repository.UserRepository;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
-import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationCode;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.net.UnknownHostException;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Optional;
@@ -21,160 +21,135 @@ import java.util.UUID;
 
 /**
  * Centralized service for tracking OAuth2 authorization grants.
- * Records authorization history with device metadata, geolocation, and scope changes.
+ * Records authorization history (Logins) based on unique Spring Authorization IDs.
  */
 @Service
 @Slf4j
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class OAuth2AuthorizationTrackingService {
 
     private final OAuth2AuthorizationHistoryRepository authorizationHistoryRepository;
     private final RequestMetadataExtractor requestMetadataExtractor;
     private final UserRepository userRepository;
+    private final OAuth2ClientRepository clientRepository;
+    private final OAuth2AuthorizationRevocationService revocationService;
 
     /**
-     * Tracks an OAuth2 authorization if it's a new grant.
-     * This is the single entry point for authorization tracking.
-     *
-     * @param authorization the authorization to potentially track
+     * Enforces single session policy for SERVER (Confidential) clients.
+     * Revokes any existing active authorization for the user/client pair before a new login.
      */
-    public void trackIfNew(OAuth2Authorization authorization) {
-        if (!isNewAuthorizationGrant(authorization)) {
+    @Transactional
+    public void enforceSingleSession(OAuth2Authorization authorization) {
+        // CRITICAL FIX: getAuthorizationGrantType() returns the INITIAL grant type (e.g. AUTHORIZATION_CODE)
+        // even during a Refresh Token flow. We must ensure we are NOT in a refresh flow.
+        // If the authorization ID is already tracked in history, it means this is a Refresh/Update, NOT a new Login.
+        if (authorizationHistoryRepository.findByAuthorizationId(authorization.getId()).isPresent()) {
             return;
         }
 
+        // Only applies to Authorization Code flow (initial login)
+        if (!AuthorizationGrantType.AUTHORIZATION_CODE.equals(authorization.getAuthorizationGrantType())) {
+            return;
+        }
+
+        // Wait until we have an access token (end of flow) to be sure
+        if (authorization.getAccessToken() == null) return;
+
+        UUID clientId = UUID.fromString(authorization.getRegisteredClientId());
+        OAuth2Client client = clientRepository.findById(clientId).orElse(null);
+
+        if (client != null && client.getClientType() == OAuth2Client.ClientType.SERVER) {
+            String principalName = authorization.getPrincipalName();
+            userRepository.findByUsername(principalName).ifPresent(user -> {
+                log.info("Enforcing single session for user {} and client {} (keep authorization {})", principalName, clientId, authorization.getId());
+                // We revoke ALL previous sessions found in history.
+                // Since this is a NEW login (checked above), we are safe.
+                // We pass the CURRENT authorization ID to exclude it from invalidation (safeguard).
+                revocationService.invalidateAllTokens(user.getId(), clientId, authorization.getId());
+            });
+        }
+    }
+
+    /**
+     * Tracks the authorization history.
+     * Logic based on Spring Authorization ID uniqueness:
+     * - ID exists in History -> It's a Refresh/Update -> IGNORE.
+     * - ID unknown in History -> It's a New Login -> CREATE History & Enforce Session.
+     */
+    @Transactional
+    public void track(OAuth2Authorization authorization) {
+        if (authorization.getAccessToken() == null) {
+            return;
+        }
+
+        // Check if this specific authorization session is already tracked
+        if (authorizationHistoryRepository.findByAuthorizationId(authorization.getId()).isPresent()) {
+            // It's just a refresh or update of an existing session.
+            // We do NOT touch the history.
+            return;
+        }
+
+        // --- It's a NEW Session ---
         try {
-            recordAuthorizationHistory(authorization);
-        } catch (SkipTrackingException e) {
-            // Scopes haven't changed, skip tracking
-            log.debug("Skipping authorization tracking for user {} and client {} as scopes haven't changed.",
-                    authorization.getPrincipalName(),
-                    authorization.getRegisteredClientId());
+            // 1. Enforce Single Session Policy (if applicable)
+            enforceSingleSession(authorization);
+
+            // 2. Manage History (Archive old, Create new)
+            createSessionHistory(authorization);
+
         } catch (Exception e) {
-            // Log error but don't fail the authorization process
-            log.error("Failed to record authorization history for user {} and client {}",
+            log.error("Failed to track authorization for user {} and client {}",
                     authorization.getPrincipalName(),
                     authorization.getRegisteredClientId(), e);
         }
     }
 
-    /**
-     * Checks if this is a NEW authorization grant (as opposed to a token refresh or update).
-     * A new grant has an authorization code but no access token yet.
-     *
-     * @param authorization the authorization to check
-     * @return true if this is a new authorization grant
-     */
-    private boolean isNewAuthorizationGrant(OAuth2Authorization authorization) {
-        // Only authorization code grant flow has authorization codes
-        if (!AuthorizationGrantType.AUTHORIZATION_CODE.equals(authorization.getAuthorizationGrantType())) {
-            return false;
-        }
-
-        OAuth2Authorization.Token<OAuth2AuthorizationCode> authorizationCode =
-                authorization.getToken(OAuth2AuthorizationCode.class);
-        OAuth2Authorization.Token<OAuth2AccessToken> accessToken =
-                authorization.getAccessToken();
-
-        // New authorization: has authorization code but no access token yet
-        return authorizationCode != null &&
-                authorizationCode.getToken() != null &&
-                accessToken == null;
-    }
-
-    /**
-     * Records the authorization grant in the history table with device metadata and geolocation.
-     * Handles scope changes by marking old authorizations as inactive.
-     *
-     * @param authorization the authorization to record
-     */
-    private void recordAuthorizationHistory(OAuth2Authorization authorization) throws UnknownHostException {
+    private void createSessionHistory(OAuth2Authorization authorization) {
         String principalName = authorization.getPrincipalName();
         UUID clientId = UUID.fromString(authorization.getRegisteredClientId());
-        Set<String> newScopes = authorization.getAuthorizedScopes();
+        Set<String> scopes = authorization.getAuthorizedScopes();
 
-        // Find user and client entities
         User user = userRepository.findByUsername(principalName)
                 .orElseThrow(() -> new IllegalStateException("User not found: " + principalName));
 
-        // Handle existing authorizations and scope changes
-        handleScopeChanges(user.getId(), clientId, newScopes);
-
-        // Extract request metadata
-        RequestMetadataExtractor.RequestMetadata metadata = requestMetadataExtractor.extract();
-
-        // Create new authorization history entry
-        OAuth2AuthorizationHistory history = OAuth2AuthorizationHistory.builder()
-                .userId(user.getId())
-                .clientId(clientId)
-                .authorizedScopes(new HashSet<>(newScopes))
-                .ipAddress(metadata.ipAddress())
-                .userAgent(metadata.userAgent())
-                .browser(metadata.browser())
-                .deviceType(metadata.deviceType())
-                .os(metadata.os())
-                .country(metadata.country())
-                .city(metadata.city())
-                .grantedAt(Instant.now())
-                .isActive(true)
-                .build();
-
-        authorizationHistoryRepository.save(history);
-
-        log.info("Authorization history recorded for user {} and client {} with {} scopes from IP {}",
-                principalName, clientId, newScopes.size(), metadata.ipAddress());
-    }
-
-    /**
-     * Handles scope changes by comparing with existing active authorization.
-     * If new scopes are added, marks the old authorization as inactive.
-     *
-     * @param userId    the user's UUID
-     * @param clientId  the client ID
-     * @param newScopes the new requested scopes
-     */
-    private void handleScopeChanges(java.util.UUID userId, UUID clientId, Set<String> newScopes) {
+        // Archive any PREVIOUS active history for this user/client
+        // (This handles the visual "History" list in frontend)
         Optional<OAuth2AuthorizationHistory> existingAuth =
-                authorizationHistoryRepository.findByUserIdAndClientIdAndIsActiveTrue(userId, clientId);
+                authorizationHistoryRepository.findByUserIdAndClientIdAndIsActiveTrue(user.getId(), clientId);
 
-        if (existingAuth.isEmpty()) {
-            // No existing authorization, this is the first one
-            return;
-        }
-
-        OAuth2AuthorizationHistory existing = existingAuth.get();
-        Set<String> existingScopes = existing.getAuthorizedScopes();
-
-        // Check if new scopes have been ADDED (not just changed)
-        if (hasNewScopesAdded(existingScopes, newScopes)) {
-            log.info("New scopes added for user {} and client {}. Marking old authorization as inactive.",
-                    userId, clientId);
+        if (existingAuth.isPresent()) {
+            OAuth2AuthorizationHistory existing = existingAuth.get();
+            log.info("New login detected for user {} and client {}. Archiving old session.", user.getId(), clientId);
             existing.markAsInactive();
             authorizationHistoryRepository.save(existing);
-        } else {
-            // Scopes haven't changed or were reduced - don't create a new entry
-            log.debug("No new scopes added for user {} and client {}. Skipping history entry.",
-                    userId, clientId);
-            throw new SkipTrackingException();
         }
+
+        createNewHistory(user, clientId, scopes, authorization.getId());
     }
 
-    /**
-     * Checks if new scopes have been ADDED (not just changed).
-     * Only considers additions, not removals.
-     *
-     * @param existingScopes the existing authorized scopes
-     * @param newScopes      the new requested scopes
-     * @return true if new scopes have been added
-     */
-    private boolean hasNewScopesAdded(Set<String> existingScopes, Set<String> newScopes) {
-        // Check if newScopes contains any scope not in existingScopes
-        return newScopes.stream().anyMatch(scope -> !existingScopes.contains(scope));
-    }
+    private void createNewHistory(User user, UUID clientId, Set<String> scopes, String authorizationId) {
+        try {
+            RequestMetadataExtractor.RequestMetadata metadata = requestMetadataExtractor.extract();
 
-    /**
-     * Internal exception to skip tracking when scopes haven't changed.
-     */
-    private static class SkipTrackingException extends RuntimeException {
+            OAuth2AuthorizationHistory history = OAuth2AuthorizationHistory.builder()
+                    .userId(user.getId())
+                    .clientId(clientId)
+                    .authorizedScopes(new HashSet<>(scopes))
+                    .authorizationId(authorizationId) // Link to Spring ID
+                    .ipAddress(metadata.ipAddress())
+                    .userAgent(metadata.userAgent())
+                    .browser(metadata.browser())
+                    .deviceType(metadata.deviceType())
+                    .os(metadata.os())
+                    .country(metadata.country())
+                    .city(metadata.city())
+                    .grantedAt(Instant.now())
+                    .isActive(true)
+                    .build();
+
+            authorizationHistoryRepository.save(history);
+        } catch (Exception e) {
+            log.warn("Failed to extract metadata or save history", e);
+        }
     }
 }

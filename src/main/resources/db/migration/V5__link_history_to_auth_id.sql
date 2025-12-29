@@ -1,0 +1,2 @@
+ALTER TABLE oauth2_authorization_history ADD COLUMN authorization_id varchar(100);
+CREATE INDEX idx_history_authorization_id ON oauth2_authorization_history(authorization_id);

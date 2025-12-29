@@ -75,6 +75,10 @@ public class OAuth2AuthorizationHistory {
     @Column(name = "is_active", nullable = false)
     private boolean isActive;
 
+    // Link to the technical Spring Authorization ID
+    @Column(name = "authorization_id", length = 100)
+    private String authorizationId;
+
     /**
      * Marks this authorization as revoked.
      * Sets revoked_at to current timestamp and is_active to false.

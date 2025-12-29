@@ -78,4 +78,6 @@ public interface OAuth2AuthorizationHistoryRepository extends JpaRepository<OAut
         ORDER BY h.user_id, h.client_id, h.revoked_at DESC NULLS LAST
         """, nativeQuery = true)
     List<OAuth2AuthorizationHistory> findInactiveAuthorizationsWithoutActiveByUserId(@Param("userId") UUID userId);
+
+    Optional<OAuth2AuthorizationHistory> findByAuthorizationId(String authorizationId);
 }

@@ -12,8 +12,11 @@ import fr.romaindu35.authserver.repository.UserRepository;
 import fr.romaindu35.authserver.service.OAuth2AuthorizationRevocationService;
 import jakarta.annotation.security.PermitAll;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +36,8 @@ public class AuthorizationManagementController {
     private final OAuth2AuthorizationHistoryRepository authorizationHistoryRepository;
     private final OAuth2ClientRepository clientRepository;
     private final UserRepository userRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final OAuth2AuthorizationService authorizationService;
 
     /**
      * Récupère toutes les autorisations actives de l'utilisateur connecté.
@@ -45,7 +50,7 @@ public class AuthorizationManagementController {
         List<OAuth2AuthorizationHistory> activeAuthorizations = authorizationHistoryRepository
                 .findActiveAuthorizationsByUserId(currentUser.getId());
 
-        return enrichWithClientInfo(activeAuthorizations);
+        return enrichWithClientInfo(activeAuthorizations, currentUser);
     }
 
     /**
@@ -61,7 +66,7 @@ public class AuthorizationManagementController {
         List<OAuth2AuthorizationHistory> inactiveAuthorizations = authorizationHistoryRepository
                 .findInactiveAuthorizationsWithoutActiveByUserId(currentUser.getId());
 
-        return enrichWithClientInfo(inactiveAuthorizations);
+        return enrichWithClientInfo(inactiveAuthorizations, currentUser);
     }
 
     /**
@@ -110,9 +115,10 @@ public class AuthorizationManagementController {
      * Enrichit les autorisations avec les informations du client.
      *
      * @param authorizations Liste des autorisations à enrichir
+     * @param user           Utilisateur courant (pour le count)
      * @return Liste des DTOs enrichis
      */
-    private List<AuthorizationWithClientDTO> enrichWithClientInfo(List<OAuth2AuthorizationHistory> authorizations) {
+    private List<AuthorizationWithClientDTO> enrichWithClientInfo(List<OAuth2AuthorizationHistory> authorizations, User user) {
         return authorizations.stream()
                 .map(auth -> {
                     // Trouver le client par son id immuable
@@ -121,6 +127,22 @@ public class AuthorizationManagementController {
 
                     String clientName = client != null ? client.getClientName() : "Client inconnu";
                     UUID clientUuid = client != null ? client.getId() : UUID.randomUUID();
+
+                    // Compter les tokens REELLEMENT actifs (non expirés ET non invalidés)
+                    int activeTokenCount = 0;
+                    if (client != null) {
+                        String sql = "SELECT id FROM oauth2_authorization WHERE principal_name = ? AND registered_client_id = ? AND refresh_token_expires_at > CURRENT_TIMESTAMP";
+                        List<String> authorizationIds = jdbcTemplate.queryForList(sql, String.class, user.getUsername(), clientUuid.toString());
+
+                        for (String authId : authorizationIds) {
+                            OAuth2Authorization authorization = authorizationService.findById(authId);
+                            if (authorization != null &&
+                                    authorization.getRefreshToken() != null &&
+                                    !authorization.getRefreshToken().isInvalidated()) {
+                                activeTokenCount++;
+                            }
+                        }
+                    }
 
                     return new AuthorizationWithClientDTO(
                             auth.getId(),
@@ -135,7 +157,8 @@ public class AuthorizationManagementController {
                             auth.getCity(),
                             auth.getGrantedAt(),
                             auth.getRevokedAt(),
-                            auth.isActive()
+                            auth.isActive(),
+                            activeTokenCount
                     );
                 })
                 .collect(Collectors.toList());

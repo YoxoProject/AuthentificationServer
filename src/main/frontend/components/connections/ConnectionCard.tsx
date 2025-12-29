@@ -4,7 +4,7 @@ import {Button} from "@/components/ui/button";
 import {Accordion, AccordionContent, AccordionItem, AccordionTrigger} from "@/components/ui/accordion";
 import {formatDistanceToNow} from "date-fns";
 import {fr} from "date-fns/locale";
-import {Loader2, Shield} from "lucide-react";
+import {Globe, Loader2, Monitor, Shield, Smartphone} from "lucide-react";
 import React, {useState} from "react";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {toast} from "sonner";
@@ -86,20 +86,43 @@ export function ConnectionCard({authorization}: ConnectionCardProps) {
 
     return (
         <Card className={cardClassName}>
-            <CardHeader className="pb-3">
+            <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                             <Shield className="h-5 w-5 text-primary flex-shrink-0"/>
                             <h3 className="text-lg font-semibold truncate">{authorization.clientName}</h3>
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant={authorization.isActive ? "default" : "secondary"}>
-                                {authorization.isActive ? "Actif" : authorization.revokedAt ? "Révoqué" : "Remplacé"}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">
-                                Autorisé {formatDate(authorization.grantedAt)}
-                            </span>
+                        <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant={authorization.isActive ? "default" : "secondary"}>
+                                    {authorization.isActive ? "Session active" : authorization.revokedAt ? "Révoqué" : "Session précédente"}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">
+                                    Depuis {formatDate(authorization.grantedAt)}
+                                </span>
+                            </div>
+
+                            {/* Metadata for transparency */}
+                            {authorization.isActive && (
+                                <div
+                                    className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
+                                    <div className="flex items-center gap-1">
+                                        <Globe className="h-3 w-3"/>
+                                        <span>{authorization.ipAddress}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <Monitor className="h-3 w-3"/>
+                                        <span>{authorization.browser} ({authorization.os})</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <Smartphone className="h-3 w-3"/>
+                                        <span className="font-medium">
+                                            {authorization.activeTokenCount} session{authorization.activeTokenCount > 1 ? 's' : ''} active{authorization.activeTokenCount > 1 ? 's' : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                     {authorization.isActive && (
@@ -125,7 +148,7 @@ export function ConnectionCard({authorization}: ConnectionCardProps) {
             <CardContent>
                 {/* Scopes */}
                 <div className="mb-4">
-                    <p className="text-sm font-medium mb-2">Scopes autorisés :</p>
+                    <p className="text-sm font-medium mb-2">Permissions accordées :</p>
                     <div className="flex flex-wrap gap-1.5">
                         {Array.from(authorization.authorizedScopes || []).map((scope) => (
                             <Badge key={scope} variant="outline" className="text-xs">

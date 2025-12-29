@@ -38,11 +38,11 @@ export function AuthorizationHistoryItem({
     const getEventLabel = () => {
         switch (event.eventType) {
             case AuthorizationEventType.AUTHORIZATION:
-                return "Autorisation initiale";
+                return "Connexion initiale";
             case AuthorizationEventType.SCOPE_ADDITION:
-                return "Ajout de scopes";
+                return "Réauthentification";
             case AuthorizationEventType.REVOCATION:
-                return "Révocation";
+                return "Accès révoqué";
             default:
                 return "Événement inconnu";
         }

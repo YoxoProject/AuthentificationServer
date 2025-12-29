@@ -28,11 +28,16 @@ public class TrackingOAuth2AuthorizationService implements OAuth2AuthorizationSe
     @Override
     @Transactional
     public void save(OAuth2Authorization authorization) {
-        // 1. Save to database using the standard JDBC service (Critical for integrity)
+        // 1. Enforce Single Session Policy (For Confidential Clients)
+        // Invalidates previous sessions if applicable before saving the new one.
+        this.trackingService.enforceSingleSession(authorization);
+
+        // 2. Save to database using the standard JDBC service (Critical for integrity)
         this.delegate.save(authorization);
 
-        // 2. Track the authorization if it's new (Business Requirement)
-        this.trackingService.trackIfNew(authorization);
+        // 3. Track the authorization activity (Login or Refresh)
+        // This handles history creation and activity logging.
+        this.trackingService.track(authorization);
     }
 
     @Override
