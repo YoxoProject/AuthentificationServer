@@ -99,7 +99,7 @@ export function ConnectionCard({authorization}: ConnectionCardProps) {
                                     {authorization.isActive ? "Session active" : authorization.revokedAt ? "Révoqué" : "Session précédente"}
                                 </Badge>
                                 <span className="text-sm text-muted-foreground">
-                                    Depuis {formatDate(authorization.grantedAt)}
+                                    Dernière autorisation {formatDate(authorization.grantedAt)}
                                 </span>
                             </div>
 

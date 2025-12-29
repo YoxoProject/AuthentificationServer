@@ -62,7 +62,7 @@ function ConsentForm() {
                 {data.clientName} ne fait pas parti de Yoxo, c'est pourquoi vous voyez cet écran. Toutes les
                 autorisations peuvent être révoquées depuis {" "}
                 <a target="_blank"
-                   href="https://auth.yoxo.software/"
+                   href="/connections"
                    className="underline underline-offset-4 hover:text-primary hover:no-underline">votre compte</a>
             </Typography>
 
