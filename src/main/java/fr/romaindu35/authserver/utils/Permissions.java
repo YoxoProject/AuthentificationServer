@@ -11,6 +11,7 @@ import java.util.Arrays;
 public enum Permissions {
 
     PROFILE("profile", "Obtenir votre nom d'utilisateur", true),
+    OPENID("openid", "Vérifier votre identité", true),
     API_ACCESS("api_access", "Réaliser des requêtes API en votre nom", true);
 
     private final String scopeName;
