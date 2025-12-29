@@ -15,8 +15,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
-import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 
 import java.util.List;
 import java.util.UUID;
@@ -37,7 +35,6 @@ public class AuthorizationManagementController {
     private final OAuth2ClientRepository clientRepository;
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
-    private final OAuth2AuthorizationService authorizationService;
 
     /**
      * Récupère toutes les autorisations actives de l'utilisateur connecté.
@@ -115,7 +112,7 @@ public class AuthorizationManagementController {
      * Enrichit les autorisations avec les informations du client.
      *
      * @param authorizations Liste des autorisations à enrichir
-     * @param user           Utilisateur courant (pour le count)
+     * @param user Utilisateur courant (pour le count)
      * @return Liste des DTOs enrichis
      */
     private List<AuthorizationWithClientDTO> enrichWithClientInfo(List<OAuth2AuthorizationHistory> authorizations, User user) {
@@ -128,20 +125,13 @@ public class AuthorizationManagementController {
                     String clientName = client != null ? client.getClientName() : "Client inconnu";
                     UUID clientUuid = client != null ? client.getId() : UUID.randomUUID();
 
-                    // Compter les tokens REELLEMENT actifs (non expirés ET non invalidés)
+                    // Compter les tokens REELLEMENT actifs (non expirés ET non invalidés) via SQL optimisé
+                    // On filtre directement les métadonnées JSON pour exclure ceux marqués 'invalidated':true
                     int activeTokenCount = 0;
                     if (client != null) {
-                        String sql = "SELECT id FROM oauth2_authorization WHERE principal_name = ? AND registered_client_id = ? AND refresh_token_expires_at > CURRENT_TIMESTAMP";
-                        List<String> authorizationIds = jdbcTemplate.queryForList(sql, String.class, user.getUsername(), clientUuid.toString());
-
-                        for (String authId : authorizationIds) {
-                            OAuth2Authorization authorization = authorizationService.findById(authId);
-                            if (authorization != null &&
-                                    authorization.getRefreshToken() != null &&
-                                    !authorization.getRefreshToken().isInvalidated()) {
-                                activeTokenCount++;
-                            }
-                        }
+                        String sql = "SELECT COUNT(*) FROM oauth2_authorization WHERE principal_name = ? AND registered_client_id = ? AND refresh_token_expires_at > CURRENT_TIMESTAMP AND (refresh_token_metadata IS NULL OR refresh_token_metadata NOT LIKE '%\"metadata.token.invalidated\":true%')";
+                        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, user.getUsername(), clientUuid.toString());
+                        activeTokenCount = count != null ? count : 0;
                     }
 
                     return new AuthorizationWithClientDTO(

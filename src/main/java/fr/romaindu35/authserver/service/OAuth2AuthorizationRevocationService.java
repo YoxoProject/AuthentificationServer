@@ -93,22 +93,22 @@ public class OAuth2AuthorizationRevocationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("User not found: " + userId));
 
-        String findIdsSql = "SELECT id FROM oauth2_authorization WHERE principal_name = ? AND registered_client_id = ?";
-        List<String> authorizationIds = jdbcTemplate.queryForList(findIdsSql, String.class, user.getUsername(), clientId.toString());
+        // Optimize: Fetch only IDs that are NOT already fully invalidated to avoid useless loading
+        String findIdsSql = "SELECT id FROM oauth2_authorization WHERE principal_name = ? AND registered_client_id = ? " +
+                "AND (" +
+                "   (access_token_metadata IS NULL OR access_token_metadata NOT LIKE '%\"metadata.token.invalidated\":true%') OR " +
+                "   (refresh_token_metadata IS NULL OR refresh_token_metadata NOT LIKE '%\"metadata.token.invalidated\":true%') OR " +
+                "   (authorization_code_metadata IS NULL OR authorization_code_metadata NOT LIKE '%\"metadata.token.invalidated\":true%')" +
+                ") AND id != ?"; // Exclude the specified ID to avoid invalidating current session
+        
+        List<String> authorizationIds = jdbcTemplate.queryForList(findIdsSql, String.class, user.getUsername(), clientId.toString(), excludedAuthorizationId);
 
         int invalidatedCount = 0;
         for (String authId : authorizationIds) {
-            // SAFEGUARD: Don't invalidate the session we are currently creating/using!
-            if (authId.equals(excludedAuthorizationId)) {
-                continue;
-            }
             log.info("Invalidating tokens for authorization ID {}", authId);
 
             OAuth2Authorization authorization = authorizationService.findById(authId);
             if (authorization == null) continue;
-
-            // Optimisation: Don't invalidate if already invalidated
-            if (isAlreadyInvalidated(authorization)) continue;
 
             OAuth2Authorization.Builder builder = OAuth2Authorization.from(authorization);
             boolean modified = false;
@@ -141,12 +141,6 @@ public class OAuth2AuthorizationRevocationService {
             }
         }
         return invalidatedCount;
-    }
-
-    private boolean isAlreadyInvalidated(OAuth2Authorization auth) {
-        boolean accessInvalid = auth.getAccessToken() == null || auth.getAccessToken().isInvalidated();
-        boolean refreshInvalid = auth.getRefreshToken() == null || auth.getRefreshToken().isInvalidated();
-        return accessInvalid && refreshInvalid;
     }
 
     /**
