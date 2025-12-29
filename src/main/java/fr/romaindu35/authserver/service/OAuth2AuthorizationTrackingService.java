@@ -1,13 +1,15 @@
 package fr.romaindu35.authserver.service;
 
-import fr.romaindu35.authserver.entity.OAuth2AuthorizationCodeGrantAuthorization;
-import fr.romaindu35.authserver.entity.OAuth2AuthorizationGrantAuthorization;
 import fr.romaindu35.authserver.entity.OAuth2AuthorizationHistory;
 import fr.romaindu35.authserver.entity.User;
 import fr.romaindu35.authserver.repository.OAuth2AuthorizationHistoryRepository;
 import fr.romaindu35.authserver.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationCode;
 import org.springframework.stereotype.Service;
 
 import java.net.UnknownHostException;
@@ -34,25 +36,25 @@ public class OAuth2AuthorizationTrackingService {
      * Tracks an OAuth2 authorization if it's a new grant.
      * This is the single entry point for authorization tracking.
      *
-     * @param authorizationGrantAuthorization the authorization to potentially track
+     * @param authorization the authorization to potentially track
      */
-    public void trackIfNew(OAuth2AuthorizationGrantAuthorization authorizationGrantAuthorization) {
-        if (!isNewAuthorizationGrant(authorizationGrantAuthorization)) {
+    public void trackIfNew(OAuth2Authorization authorization) {
+        if (!isNewAuthorizationGrant(authorization)) {
             return;
         }
 
         try {
-            recordAuthorizationHistory(authorizationGrantAuthorization);
+            recordAuthorizationHistory(authorization);
         } catch (SkipTrackingException e) {
             // Scopes haven't changed, skip tracking
             log.debug("Skipping authorization tracking for user {} and client {} as scopes haven't changed.",
-                    authorizationGrantAuthorization.getPrincipalName(),
-                    authorizationGrantAuthorization.getRegisteredClientId());
+                    authorization.getPrincipalName(),
+                    authorization.getRegisteredClientId());
         } catch (Exception e) {
             // Log error but don't fail the authorization process
             log.error("Failed to record authorization history for user {} and client {}",
-                    authorizationGrantAuthorization.getPrincipalName(),
-                    authorizationGrantAuthorization.getRegisteredClientId(), e);
+                    authorization.getPrincipalName(),
+                    authorization.getRegisteredClientId(), e);
         }
     }
 
@@ -63,16 +65,21 @@ public class OAuth2AuthorizationTrackingService {
      * @param authorization the authorization to check
      * @return true if this is a new authorization grant
      */
-    private boolean isNewAuthorizationGrant(OAuth2AuthorizationGrantAuthorization authorization) {
+    private boolean isNewAuthorizationGrant(OAuth2Authorization authorization) {
         // Only authorization code grant flow has authorization codes
-        if (!(authorization instanceof OAuth2AuthorizationCodeGrantAuthorization codeAuth)) {
+        if (!AuthorizationGrantType.AUTHORIZATION_CODE.equals(authorization.getAuthorizationGrantType())) {
             return false;
         }
 
+        OAuth2Authorization.Token<OAuth2AuthorizationCode> authorizationCode =
+                authorization.getToken(OAuth2AuthorizationCode.class);
+        OAuth2Authorization.Token<OAuth2AccessToken> accessToken =
+                authorization.getAccessToken();
+
         // New authorization: has authorization code but no access token yet
-        return codeAuth.getAuthorizationCode() != null &&
-                codeAuth.getAuthorizationCode().getTokenValue() != null &&
-                (codeAuth.getAccessToken() == null || codeAuth.getAccessToken().getTokenValue() == null);
+        return authorizationCode != null &&
+                authorizationCode.getToken() != null &&
+                accessToken == null;
     }
 
     /**
@@ -81,7 +88,7 @@ public class OAuth2AuthorizationTrackingService {
      *
      * @param authorization the authorization to record
      */
-    private void recordAuthorizationHistory(OAuth2AuthorizationGrantAuthorization authorization) throws UnknownHostException {
+    private void recordAuthorizationHistory(OAuth2Authorization authorization) throws UnknownHostException {
         String principalName = authorization.getPrincipalName();
         UUID clientId = UUID.fromString(authorization.getRegisteredClientId());
         Set<String> newScopes = authorization.getAuthorizedScopes();

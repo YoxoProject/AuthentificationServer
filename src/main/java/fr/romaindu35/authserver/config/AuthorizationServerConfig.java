@@ -9,16 +9,23 @@ import com.nimbusds.jose.proc.SecurityContext;
 import fr.romaindu35.authserver.repository.OAuth2ClientRepository;
 import fr.romaindu35.authserver.repository.UserRepository;
 import fr.romaindu35.authserver.service.JpaRegisteredClientRepository;
+import fr.romaindu35.authserver.service.OAuth2AuthorizationTrackingService;
+import fr.romaindu35.authserver.service.TrackingOAuth2AuthorizationService;
 import fr.romaindu35.authserver.utils.Permissions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
@@ -75,6 +82,19 @@ public class AuthorizationServerConfig {
     public RegisteredClientRepository registeredClientRepository(OAuth2ClientRepository oAuth2ClientRepository) {
         JpaRegisteredClientRepository repo = new JpaRegisteredClientRepository(oAuth2ClientRepository);
         return repo;
+    }
+
+    @Bean
+    public OAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate,
+                                                           RegisteredClientRepository registeredClientRepository,
+                                                           OAuth2AuthorizationTrackingService trackingService) {
+        JdbcOAuth2AuthorizationService jdbcService = new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
+        return new TrackingOAuth2AuthorizationService(jdbcService, trackingService);
+    }
+
+    @Bean
+    public OAuth2AuthorizationConsentService authorizationConsentService(JdbcTemplate jdbcTemplate, RegisteredClientRepository registeredClientRepository) {
+        return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
     }
 
     @Bean
