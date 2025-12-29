@@ -114,15 +114,12 @@ public class ClientManagementController {
 
     /**
      * Récupère la liste des scopes disponibles pour les clients OAuth2.
-     * Retourne tous les scopes sauf API_ACCESS (réservé aux clients de type SERVICE).
      *
      * @return Tableau des scopes disponibles avec leur nom et description
      */
     @Nonnull
     public Permissions.PermissionData[] getAvailableScopes() {
-        return Arrays.stream(Permissions.valuesData())
-                .filter(p -> !p.scopeName().equals("api_access"))
-                .toArray(Permissions.PermissionData[]::new);
+        return Permissions.valuesData();
     }
 
     /**
