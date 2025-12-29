@@ -15,8 +15,9 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationCode;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
-import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +35,7 @@ public class OAuth2AuthorizationRevocationService {
 
     private final OAuth2AuthorizationHistoryRepository authorizationHistoryRepository;
     private final OAuth2AuthorizationService authorizationService;
+    private final OAuth2AuthorizationConsentService authorizationConsentService;
     private final JdbcTemplate jdbcTemplate;
     private final UserRepository userRepository;
     private final OAuth2ClientRepository clientRepository;
@@ -44,6 +46,7 @@ public class OAuth2AuthorizationRevocationService {
      * 1. Mark the authorization history entry as revoked
      * 2. Find all active authorizations for this user/client pair
      * 3. Mark their tokens (Access, Refresh, Code) as invalidated in the database
+     * 4. Remove the user consent for this client
      *
      * @param userId the user's UUID
      * @param clientId the OAuth2 client ID
@@ -119,11 +122,26 @@ public class OAuth2AuthorizationRevocationService {
                         "Invalidated {} authorization sessions.",
                 userId, clientId, invalidatedCount);
 
+        // 4. Remove Consent
+        OAuth2AuthorizationConsent consent = authorizationConsentService.findById(clientId.toString(), user.getUsername());
+        if (consent != null) {
+            authorizationConsentService.remove(consent);
+            log.info("Consent removed for user {} and client {}", user.getUsername(), clientId);
+        } else {
+            log.debug("No consent found to remove for user {} and client {}", user.getUsername(), clientId);
+        }
+
         return true;
     }
 
     /**
      * Gets the authorization events for a specific user and client.
+     * Transforms raw authorization history into typed events (AUTHORIZATION, SCOPE_ADDITION, REVOCATION).
+     * Each event contains all metadata and is properly typed for frontend consumption.
+     *
+     * @param userId the user's UUID
+     * @param clientId the OAuth2 client ID
+     * @return List of authorization events sorted by timestamp DESC (most recent first)
      */
     public List<AuthorizationEventDTO> getAuthorizationEvents(UUID userId, UUID clientId) {
         log.debug("Getting authorization events for user {} and client {}", userId, clientId);
@@ -144,7 +162,7 @@ public class OAuth2AuthorizationRevocationService {
         // Transformer l'historique en événements
         List<AuthorizationEventDTO> events = new ArrayList<>();
         boolean nextIsScopeAddition = false;
-        
+        // Parcourir l'historique en ordre ASC (plus vieux en premier). On viendra inverser à la fin. Ce choix est réalisé afin de plus facilement gérer l'ajout de scopes.
         for (OAuth2AuthorizationHistory historyItem : history) {
             if (!nextIsScopeAddition) {
                 events.add(createEventDTO(historyItem, AuthorizationEventType.AUTHORIZATION, historyItem.getGrantedAt(), historyItem.getAuthorizedScopes(), clientName));
@@ -152,6 +170,7 @@ public class OAuth2AuthorizationRevocationService {
                 events.add(createEventDTO(historyItem, AuthorizationEventType.SCOPE_ADDITION, historyItem.getGrantedAt(), historyItem.getAuthorizedScopes(), clientName));
             }
             if (historyItem.getRevokedAt() != null) {
+                // Sur les événements révoqués, on d'indique pas l'ip, le navigateur, etc.
                 events.add(new AuthorizationEventDTO(
                         historyItem.getId(),
                         AuthorizationEventType.REVOCATION,
@@ -162,12 +181,19 @@ public class OAuth2AuthorizationRevocationService {
                         null, null, null, null, null, null
                 ));
             }
+            // Si révoqué et nul, alors il s'agit d'un changement de scope
             nextIsScopeAddition = historyItem.getRevokedAt() == null && !historyItem.isActive();
         }
+
+        log.debug("Transformed {} history entries into {} events for user {} and client {}",
+                history.size(), events.size(), userId, clientId);
 
         return events.reversed();
     }
 
+    /**
+     * Helper method to create an AuthorizationEventDTO from an authorization history entry.
+     */
     private AuthorizationEventDTO createEventDTO(
             OAuth2AuthorizationHistory auth,
             AuthorizationEventType eventType,
