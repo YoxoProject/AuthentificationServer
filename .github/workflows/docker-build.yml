@@ -1,56 +1,58 @@
-name: Build and Push Docker Image
+name: AuthServer - Release - Build and push Docker image
 
 on:
   push:
-    branches:
-      - master
-      - main
     tags:
-      - 'v*'
-  pull_request:
-    branches:
-      - master
-      - main
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+      - 'v*' # Se déclenche sur les tags type v1.0.0
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
+      - name: Extract Metadata
         id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          SHA=$(git rev-parse --short HEAD)
+          echo "tag=${VERSION}-${SHA}" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker image
+      # Connexion au Tailscale pour accéder au registre privé
+      - name: Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+
+      - name: Build and Push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ secrets.DOCKER_REGISTRY_URL }}/auth-server:${{ steps.meta.outputs.tag }}
+            ${{ secrets.DOCKER_REGISTRY_URL }}/auth-server:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+
+      - name: Deploy to Kubernetes
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd Kubernetes
+            git pull
+            cd helm/auth-server
+            helm upgrade --install auth-server . --set image.tag=${{ needs.build-and-push.outputs.tag }} --rollback-on-failure --timeout 3m
