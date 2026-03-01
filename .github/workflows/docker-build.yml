@@ -55,4 +55,4 @@ jobs:
             cd Kubernetes
             git pull
             cd helm/auth-server
-            helm upgrade --install auth-server . --set image.tag=${{ needs.build-and-push.outputs.tag }} --rollback-on-failure --timeout 3m
+            helm upgrade --install auth-server . --set image.tag=${{ needs.build-and-push.outputs.tag }} --rollback-on-failure --timeout 5m
