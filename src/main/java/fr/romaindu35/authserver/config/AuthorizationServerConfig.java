@@ -20,30 +20,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.lang.Nullable;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.keygen.Base64StringKeyGenerator;
-import org.springframework.security.crypto.keygen.StringKeyGenerator;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.OAuth2RefreshToken;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
-import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
-import org.springframework.security.oauth2.server.authorization.token.JwtGenerator;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2RefreshTokenGenerator;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.security.oauth2.server.authorization.web.authentication.ClientSecretBasicAuthenticationConverter;
 import org.springframework.security.oauth2.server.authorization.web.authentication.ClientSecretPostAuthenticationConverter;
 import org.springframework.security.oauth2.server.authorization.web.authentication.JwtClientAssertionAuthenticationConverter;
@@ -57,10 +45,7 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
-import java.time.Clock;
-import java.time.Instant;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -70,25 +55,25 @@ public class AuthorizationServerConfig {
 
     @Bean
     @Order(1)
-    public SecurityFilterChain authServerSecurityFilterChain(HttpSecurity http, OAuth2TokenGenerator<?> tokenGenerator) throws Exception {
+    public SecurityFilterChain authServerSecurityFilterChain(HttpSecurity http) {
         OAuth2AuthorizationServerConfigurer oAuth2AuthorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
         http.securityMatcher(oAuth2AuthorizationServerConfigurer.getEndpointsMatcher());
         http.with(oAuth2AuthorizationServerConfigurer, configurer -> {
-            configurer.oidc(Customizer.withDefaults())
-                    .authorizationEndpoint(authorizationEndpoint -> authorizationEndpoint.consentPage("/oauth2/consent"))
-                    .clientAuthentication(clientAuthentication -> {
-                        clientAuthentication.authenticationConverter(
-                                // On viens définir l'ordre dans lequel les convertisseurs vont être appelés pour authentifier un client OAuth2
-                                // On viens préférer le client_secret_post ce qui permet de l'utiliser même quand un header Authorization est présent
-                                new DelegatingAuthenticationConverter(Arrays.asList(
-                                        new ClientSecretPostAuthenticationConverter(),
-                                        new JwtClientAssertionAuthenticationConverter(),
-                                        new ClientSecretBasicAuthenticationConverter(),
-                                        new PublicClientAuthenticationConverter(),
-                                        new X509ClientCertificateAuthenticationConverter()
-                                ))
-                        );
-                    }).tokenGenerator(tokenGenerator);
+                configurer.oidc(Customizer.withDefaults())
+                .authorizationEndpoint(authorizationEndpoint -> authorizationEndpoint.consentPage("/oauth2/consent"))
+                .clientAuthentication(clientAuthentication -> {
+                    clientAuthentication.authenticationConverter(
+                            // On viens définir l'ordre dans lequel les convertisseurs vont être appelés pour authentifier un client OAuth2
+                            // On viens préférer le client_secret_post ce qui permet de l'utiliser même quand un header Authorization est présent
+                            new DelegatingAuthenticationConverter(Arrays.asList(
+                                    new ClientSecretPostAuthenticationConverter(),
+                                    new JwtClientAssertionAuthenticationConverter(),
+                                    new ClientSecretBasicAuthenticationConverter(),
+                                    new PublicClientAuthenticationConverter(),
+                                    new X509ClientCertificateAuthenticationConverter()
+                            ))
+                    );
+                });
         });
         http.cors(Customizer.withDefaults());
         http.authorizeHttpRequests(authorize -> authorize
@@ -155,16 +140,7 @@ public class AuthorizationServerConfig {
     }
 
     @Bean
-    public OAuth2TokenGenerator<?> tokenGenerator(JWKSource<SecurityContext> jwkSource, OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer) {
-        JwtEncoder jwtEncoder = new NimbusJwtEncoder(jwkSource);
-        JwtGenerator jwtGenerator = new JwtGenerator(jwtEncoder);
-        jwtGenerator.setJwtCustomizer(jwtCustomizer);
-        OAuth2TokenGenerator<OAuth2RefreshToken> refreshTokenGenerator = new PublicClientRefreshTokenGenerator();
-        return new DelegatingOAuth2TokenGenerator(jwtGenerator, refreshTokenGenerator);
-    }
-
-    @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer(UserRepository userRepository) {
+    public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer(UserRepository userRepository) {
         return context -> {
             // Par définition, un client_credentials n'a pas d'utilisateur associé. On ne filtre donc pas les scopes dans ce cas.
             // Pas besoin de faire du filtrage sur les scopes puisque spring l'aurait bloqué avant d'arriver ici
@@ -193,30 +169,5 @@ public class AuthorizationServerConfig {
                     .collect(Collectors.toSet());
             context.getClaims().claim("scope", filteredScopes);
         };
-    }
-
-    /**
-     * Générateur de refresh token qui ne bloque PAS les clients publics.
-     * La version par défaut de Spring Security le fait {@link OAuth2RefreshTokenGenerator}, ce qui est conforme à la spec OAuth 2.1
-     * mais trop restrictif pour notre cas d'usage avec une SPA.
-     * Pour plus d'informations: https://github.com/spring-projects/spring-authorization-server/pull/1432/changes/45f292378d68d569ee7db5f92275493148ade6d7
-     */
-    private static final class PublicClientRefreshTokenGenerator implements OAuth2TokenGenerator<OAuth2RefreshToken> {
-        private final StringKeyGenerator refreshTokenGenerator = new Base64StringKeyGenerator(
-                Base64.getUrlEncoder().withoutPadding(), 96);
-        private final Clock clock = Clock.systemUTC();
-
-        @Nullable
-        @Override
-        public OAuth2RefreshToken generate(OAuth2TokenContext context) {
-            if (!OAuth2TokenType.REFRESH_TOKEN.equals(context.getTokenType())) {
-                return null;
-            }
-            // La vérification du client public est intentionnellement omise ici.
-
-            Instant issuedAt = this.clock.instant();
-            Instant expiresAt = issuedAt.plus(context.getRegisteredClient().getTokenSettings().getRefreshTokenTimeToLive());
-            return new OAuth2RefreshToken(this.refreshTokenGenerator.generateKey(), issuedAt, expiresAt);
-        }
     }
 }
