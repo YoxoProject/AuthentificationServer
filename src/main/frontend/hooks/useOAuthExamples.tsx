@@ -1,4 +1,4 @@
-import {useMemo} from 'react';
+import {JSX, useMemo} from 'react';
 import ClientType from "@/generated/fr/romaindu35/authserver/entity/OAuth2Client/ClientType";
 
 const AUTH_SERVER_BASE_URL = 'https://auth.yoxo.software';

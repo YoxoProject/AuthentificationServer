@@ -1,11 +1,11 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.5.4'
+    id 'org.springframework.boot' version '4.0.3'
     id 'io.spring.dependency-management' version '1.1.7'
-    id 'com.vaadin' version "24.8.6"
+    id 'com.vaadin' version "25.0.6"
 }
 ext {
-    vaadinVersion = "24.8.6"
+    vaadinVersion = "25.0.6"
 }
 
 group = 'fr.romaindu35'
@@ -50,13 +50,12 @@ dependencies {
     // Geolocation and User-Agent parsing
     implementation 'com.maxmind.geoip2:geoip2:4.2.0'
     implementation 'eu.bitwalker:UserAgentUtils:1.21'
+
+    implementation "com.vaadin:hilla-spring-boot-starter:$vaadinVersion"
+    developmentOnly 'com.vaadin:vaadin-dev'
 }
 dependencyManagement {
     imports {
         mavenBom "com.vaadin:vaadin-bom:$vaadinVersion"
     }
-}
-
-tasks.named('test') {
-    useJUnitPlatform()
 }
