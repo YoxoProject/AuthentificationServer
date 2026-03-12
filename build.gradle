@@ -2,10 +2,10 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '4.0.3'
     id 'io.spring.dependency-management' version '1.1.7'
-    id 'com.vaadin' version "25.0.6"
+    id 'com.vaadin' version "25.0.8"
 }
 ext {
-    vaadinVersion = "25.0.6"
+    vaadinVersion = "25.0.8"
 }
 
 group = 'fr.romaindu35'
