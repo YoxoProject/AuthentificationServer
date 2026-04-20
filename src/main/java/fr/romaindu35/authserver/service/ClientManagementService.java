@@ -58,7 +58,7 @@ public class ClientManagementService {
         client.setClientIdIssuedAt(Instant.now());
 
         // Valeurs par défaut
-        client.setClientType(OAuth2Client.ClientType.CLIENT);
+        client.setClientType(OAuth2Client.ClientType.SERVICE);
         client.setClientId(generateClientId());
         client.setClientSecret(null); // Pas de secret pour CLIENT type par défaut
         client.setClientSecretExpiresAt(null);
